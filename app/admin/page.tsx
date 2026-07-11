@@ -127,7 +127,7 @@ function Panel({ title, hint, children }: { title: string; hint: string; childre
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-sm font-semibold">{title}</h2>
-      <p className="mb-3 mt-0.5 overflow-x-auto font-mono text-[11px] text-slate-400">{hint}</p>
+      <p className="mb-3 mt-0.5 overflow-x-auto font-mono text-[11px] text-slate-500 dark:text-slate-400">{hint}</p>
       {children}
     </section>
   )
@@ -146,11 +146,11 @@ function BarList({
         <li key={r.label} className="flex items-center gap-3 text-sm">
           <span className="w-24 shrink-0 truncate font-medium">{r.label}</span>
           <div className="h-6 flex-1 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
-            <div className="flex h-full items-center rounded bg-teal-500/80 px-2" style={{ width: `${Math.max(6, r.pct * 100)}%` }}>
+            <div className="flex h-full items-center rounded bg-indigo-600 px-2" style={{ width: `${Math.max(6, r.pct * 100)}%` }}>
               <span className="truncate text-xs font-semibold text-white">{format(r.value)}</span>
             </div>
           </div>
-          <span className="hidden w-40 shrink-0 text-right text-xs text-slate-400 sm:block">{r.sub}</span>
+          <span className="hidden w-40 shrink-0 text-right text-xs text-slate-500 dark:text-slate-400 sm:block">{r.sub}</span>
         </li>
       ))}
     </ul>

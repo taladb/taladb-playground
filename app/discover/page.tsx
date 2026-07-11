@@ -146,7 +146,7 @@ export default function DiscoverPage() {
                   <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-950 dark:text-violet-300">
                     {(score * 100).toFixed(0)}% match
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {l.city} · ${l.pricePerNight}
                   </span>
                 </div>

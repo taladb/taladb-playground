@@ -85,7 +85,7 @@ function Vault() {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600 disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             {busy ? 'Opening…' : 'Unlock'}
           </button>
@@ -105,7 +105,7 @@ function Vault() {
             <div>
               <span className="font-medium">{c.label || 'Card'}</span>{' '}
               <span className="font-mono text-slate-500">•••• {c.last4}</span>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 {c.holder} · exp {c.expiry}
               </div>
             </div>
@@ -185,7 +185,7 @@ function Internals() {
 
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase text-slate-400">
+          <thead className="text-xs uppercase text-slate-500 dark:text-slate-400">
             <tr>
               <th className="py-1">Collection</th>
               <th className="py-1">Docs</th>

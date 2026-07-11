@@ -4,7 +4,7 @@ export function Footer() {
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-2">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <span className="grid h-5 w-5 place-items-center rounded bg-teal-500 text-xs text-white">▲</span>
+            <span className="grid h-5 w-5 place-items-center rounded bg-indigo-600 text-xs text-white">▲</span>
             Wanderdeck
           </p>
           <p className="max-w-3xl text-sm text-slate-500 dark:text-slate-400">
@@ -15,7 +15,7 @@ export function Footer() {
             the aggregation pipeline, encryption at rest, and offline-first sync are all TalaDB features
             demonstrated here.
           </p>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Built with Next.js 16 · Tailwind v4 ·{' '}
             <span className="font-mono">taladb · @taladb/web · @taladb/react · @taladb/next @ 0.9.0</span>
           </p>

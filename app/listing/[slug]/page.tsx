@@ -17,7 +17,7 @@ export default function ListingDetailPage() {
     return (
       <div className="py-20 text-center text-sm text-slate-500">
         Listing not found.{' '}
-        <Link href="/" className="text-teal-600 underline">
+        <Link href="/" className="text-indigo-600 underline dark:text-indigo-400">
           Back to explore
         </Link>
       </div>
@@ -85,7 +85,7 @@ export default function ListingDetailPage() {
             </p>
             <Link
               href={`/book/${listing.slug}`}
-              className="mt-4 block rounded-xl bg-teal-500 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-teal-600"
+              className="mt-4 block rounded-xl bg-indigo-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Reserve
             </Link>

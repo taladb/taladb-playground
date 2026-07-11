@@ -41,7 +41,7 @@ export function SyncStatusBadge() {
   const color = !online
     ? 'bg-amber-500'
     : pending > 0
-      ? 'bg-teal-500 animate-pulse'
+      ? 'bg-indigo-500 animate-pulse'
       : 'bg-emerald-500'
   const label = !online ? 'Offline' : pending > 0 ? `Syncing ${pending}` : 'Synced'
 

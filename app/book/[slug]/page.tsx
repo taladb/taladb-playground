@@ -104,7 +104,7 @@ export default function BookPage() {
       <button
         onClick={confirm}
         disabled={nights < 1 || saving}
-        className="rounded-xl bg-teal-500 py-3 text-sm font-semibold text-white transition hover:bg-teal-600 disabled:opacity-50"
+        className="rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
       >
         {saving ? 'Saving…' : `Confirm reservation · $${total}`}
       </button>

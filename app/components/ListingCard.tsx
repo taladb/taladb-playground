@@ -29,7 +29,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
           </span>
           <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium">
             ★ {listing.rating.toFixed(2)}
-            <span className="text-slate-400">({listing.reviewsCount})</span>
+            <span className="text-slate-500 dark:text-slate-400">({listing.reviewsCount})</span>
           </span>
         </div>
         <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{listing.name}</h3>

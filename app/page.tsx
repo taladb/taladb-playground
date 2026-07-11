@@ -30,9 +30,9 @@ export default function ExplorePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-3xl bg-gradient-to-br from-teal-500 to-teal-600 p-6 text-white sm:p-8">
+      <section className="rounded-3xl bg-gradient-to-br from-indigo-600 to-blue-600 p-6 text-white shadow-sm sm:p-8">
         <h1 className="text-2xl font-bold sm:text-3xl">Find your next stay</h1>
-        <p className="mt-1 max-w-2xl text-sm text-teal-50">
+        <p className="mt-1 max-w-2xl text-sm text-indigo-50">
           Every listing, filter, and booking here lives in a database running{' '}
           <strong>inside your browser</strong>. This page is powered entirely by TalaDB&apos;s
           document queries — structured filters and full-text search, no server round-trips.
@@ -46,7 +46,7 @@ export default function ExplorePage() {
               setPage(1)
             }}
             placeholder="Search descriptions — try “beach”, “quiet garden”, “fireplace”…"
-            className="w-full bg-transparent px-1 py-2 text-sm text-white placeholder:text-teal-100 focus:outline-none"
+            className="w-full bg-transparent px-1 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
           />
         </div>
       </section>
@@ -125,7 +125,7 @@ function QueryPreview({ filter }: { filter: object | undefined }) {
       <summary className="cursor-pointer select-none px-3 py-2 font-medium text-slate-500 dark:text-slate-400">
         The query TalaDB is running
       </summary>
-      <pre className="overflow-x-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-teal-700 dark:text-teal-300">
+      <pre className="overflow-x-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-indigo-700 dark:text-indigo-300">
         {`listings.find(${JSON.stringify(filter ?? {}, null, 2)})`}
       </pre>
     </details>

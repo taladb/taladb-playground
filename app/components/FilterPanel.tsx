@@ -19,8 +19,8 @@ function Chip({
       onClick={onClick}
       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
         active
-          ? 'border-teal-500 bg-teal-500 text-white'
-          : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
+          ? 'border-indigo-600 bg-indigo-600 text-white'
+          : 'border-slate-300 text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
       }`}
     >
       {label}
@@ -59,7 +59,7 @@ export function FilterPanel({
           step={10}
           value={filters.maxPrice}
           onChange={(e) => set({ maxPrice: Number(e.target.value) })}
-          className="w-full accent-teal-500"
+          className="w-full accent-indigo-600"
         />
       </Section>
 

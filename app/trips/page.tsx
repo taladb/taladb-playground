@@ -14,9 +14,9 @@ export default function TripsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm dark:border-teal-900 dark:bg-teal-950/40">
-        <p className="font-medium text-teal-900 dark:text-teal-200">This is your synced data.</p>
-        <p className="mt-1 text-teal-800 dark:text-teal-300/80">
+      <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm dark:border-indigo-900 dark:bg-indigo-950/40">
+        <p className="font-medium text-indigo-900 dark:text-indigo-200">This is your synced data.</p>
+        <p className="mt-1 text-indigo-800 dark:text-indigo-300">
           Bookings and saves live in the on-device database and sync to the server every 10s. Open this
           page in a second tab or device (same browser) and watch changes converge. Go offline (DevTools
           → Network → Offline), make changes, then reconnect — they merge automatically.
@@ -116,7 +116,7 @@ function Empty({ text, cta }: { text: string; cta?: boolean }) {
       {text}
       {cta && (
         <div className="mt-2">
-          <Link href="/" className="text-teal-600 underline">
+          <Link href="/" className="text-indigo-600 underline dark:text-indigo-400">
             Explore stays
           </Link>
         </div>

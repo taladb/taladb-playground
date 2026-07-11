@@ -3,9 +3,6 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-teal-400: #2dd4bf;
-  --color-teal-500: #14b8a6;
-  --color-teal-600: #0d9488;
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
@@ -13,6 +10,8 @@
 @layer base {
   html {
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   * {
@@ -21,6 +20,17 @@
 
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  ::selection {
+    @apply bg-indigo-500/25;
+  }
+
+  /* Consistent form-control styling so inputs read clearly in both themes. */
+  input,
+  textarea,
+  select {
+    @apply text-slate-900 placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500;
   }
 }
 
@@ -35,5 +45,5 @@
 }
 .spinner {
   @apply rounded-full border-2 border-slate-200 dark:border-slate-700 animate-spin;
-  border-top-color: theme('colors.teal.400');
+  border-top-color: var(--color-indigo-500);
 }

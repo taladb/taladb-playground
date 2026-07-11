@@ -45,7 +45,7 @@ function SeedBanner() {
   if (docReady) return null
   const pct = docTotal ? Math.round((docLoaded / docTotal) * 100) : 0
   return (
-    <div className="bg-teal-500 px-4 py-1.5 text-center text-xs font-medium text-white">
+    <div className="bg-indigo-600 px-4 py-1.5 text-center text-xs font-medium text-white">
       Seeding {docTotal.toLocaleString()} listings into your on-device database…{' '}
       {docTotal ? `${pct}%` : ''}
     </div>
@@ -60,10 +60,12 @@ export function Nav() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-2 tracking-tight">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-teal-500 text-white">▲</span>
-            <span className="flex flex-col leading-none">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-white">▲</span>
+            <span className="flex flex-col leading-tight">
               <span className="font-semibold">Wanderdeck</span>
-              <span className="text-[10px] font-medium text-slate-400">powered by TalaDB 0.9</span>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                powered by TalaDB 0.9
+              </span>
             </span>
           </Link>
           <nav className="ml-2 hidden items-center gap-1 sm:flex">
@@ -75,8 +77,8 @@ export function Nav() {
                   href={l.href}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                     active
-                      ? 'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-white'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900'
+                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900'
                   }`}
                 >
                   {l.label}
