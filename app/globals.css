@@ -5,6 +5,7 @@
 @theme {
   --color-teal-400: #2dd4bf;
   --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
@@ -15,7 +16,7 @@
   }
 
   * {
-    @apply border-slate-200 dark:border-slate-700;
+    @apply border-slate-200 dark:border-slate-800;
   }
 
   body {
@@ -29,7 +30,6 @@
   }
 }
 
-/* Spinner animation */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

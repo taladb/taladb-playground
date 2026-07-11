@@ -1,28 +1,33 @@
 {
-  "name": "taladb-example-web",
+  "name": "taladb-playground",
   "private": true,
-  "version": "0.7.3",
+  "version": "0.9.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
+    "start": "next start",
+    "seed": "tsx scripts/generate-seed.ts"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
-    "@taladb/react": "^0.7.3",
-    "@taladb/web": "^0.7.3",
-    "@types/react": "^18.3.1",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "taladb": "^0.7.03",
-    "typescript": "^5.9.3",
-    "vite": "^6.3.5"
+    "@taladb/next": "0.9.0",
+    "@taladb/react": "0.9.0",
+    "@taladb/web": "0.9.0",
+    "next": "^16.2.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "taladb": "0.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "tailwindcss": "^4.2.2"
+    "@huggingface/transformers": "^3.8.1",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
   }
 }
