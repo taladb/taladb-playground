@@ -1,8 +1,7 @@
 'use client'
 
-import { useCollection, useFindOne } from '@taladb/react'
+import { useCollection, useFindOne, useMutation } from '@taladb/react'
 import type { Favorite, ListingCardDoc } from '@/lib/types'
-import { useFavorites } from '@/lib/mutations'
 
 export function FavoriteButton({ listing }: { listing: ListingCardDoc }) {
   // The read stays a live query — favorites are small, mutable and synced, so
@@ -10,7 +9,9 @@ export function FavoriteButton({ listing }: { listing: ListingCardDoc }) {
   const favorites = useCollection<Favorite>('favorites')
   const { data: existing } = useFindOne(favorites, { listingId: listing.slug })
   // The write goes through useMutation: local-first + durable outbox + retry.
-  const { mutate } = useFavorites()
+  // The provider's `collections` registry means this handle carries the Zod
+  // schema and stamps `_v` — no hand-rolled validation wrapper needed.
+  const { mutate } = useMutation<Favorite>({ collection: 'favorites' })
   const active = !!existing
 
   function toggle() {

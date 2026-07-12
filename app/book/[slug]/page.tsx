@@ -3,9 +3,8 @@
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { useCollection, useFindOne } from '@taladb/react'
-import type { Listing } from '@/lib/types'
-import { useBookings } from '@/lib/mutations'
+import { useCollection, useFindOne, useMutation } from '@taladb/react'
+import type { Booking, Listing } from '@/lib/types'
 
 function todayPlus(days: number): string {
   const d = new Date()
@@ -20,7 +19,7 @@ export default function BookPage() {
   const listings = useCollection<Listing>('listings')
   const { data: listing, loading } = useFindOne(listings, { slug })
   // Local-first write: committed to disk immediately, then pushed with retry.
-  const { mutateAsync } = useBookings()
+  const { mutateAsync } = useMutation<Booking>({ collection: 'bookings' })
 
   const [checkIn, setCheckIn] = useState(todayPlus(7))
   const [checkOut, setCheckOut] = useState(todayPlus(10))

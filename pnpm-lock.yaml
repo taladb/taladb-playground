@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@taladb/next':
-        specifier: 0.9.2
-        version: 0.9.2(@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2)))(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
+        specifier: ^0.9.3
+        version: 0.9.3(@taladb/react@0.9.3(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3)))(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3))
       '@taladb/react':
-        specifier: 0.9.2
-        version: 0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
+        specifier: ^0.9.3
+        version: 0.9.3(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3))
       '@taladb/web':
-        specifier: 0.9.2
-        version: 0.9.2
+        specifier: ^0.9.3
+        version: 0.9.3
       next:
         specifier: ^16.2.10
         version: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -27,8 +27,8 @@ importers:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
       taladb:
-        specifier: 0.9.2
-        version: 0.9.2(@taladb/web@0.9.2)
+        specifier: ^0.9.3
+        version: 0.9.3(@taladb/web@0.9.3)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -556,28 +556,28 @@ packages:
   '@tailwindcss/postcss@4.3.2':
     resolution: {integrity: sha512-rjVWYCa7Ngbi5AarT6k8TkxUG3Wl1QKzHdIZVsjZSzf36Jmo2IKZt/NHRAwly8oDkbBOH0YTu+CHuf9jPxMc+g==}
 
-  '@taladb/next@0.9.2':
-    resolution: {integrity: sha512-GAh4/IVCUJck1zaVfiYsIzZhSK+WkHerv8l2sZ7PCHoPlCgsen17SczonwBDryJ2po3e90zVUiqw4NNZE/iSpg==}
+  '@taladb/next@0.9.3':
+    resolution: {integrity: sha512-bTeHqiOQDfrvrmEwKiSf7SNQGkYRP/2u4vV+pAT+bb21hZB2elgd10KiqimyqXuaXVXPC3j9bfg7QLESYAGrTw==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@taladb/react': ^0.9.2
+      '@taladb/react': ^0.9.3
       react: '>=18.0.0'
-      taladb: ^0.9.2
+      taladb: ^0.9.3
     peerDependenciesMeta:
       '@taladb/react':
         optional: true
       react:
         optional: true
 
-  '@taladb/react@0.9.2':
-    resolution: {integrity: sha512-SvOHlQnB8QvHaQkcmnLC5Ei4mOG6DIp1KuvP3ajuvSc11KlPEpFKAIUrkTYeHK5eiwNsExa57maCeaDEOFAKAw==}
+  '@taladb/react@0.9.3':
+    resolution: {integrity: sha512-jMBQDfoWaFSmiE6LWYO2RDzdJidzUoPJTyV+imt9Fxwcw+akc6CfvIeFNoYR1pNx+pqYIauhv67Pi0YY4sRmVA==}
     engines: {node: '>=18'}
     peerDependencies:
       react: '>=18.0.0'
-      taladb: ^0.9.2
+      taladb: ^0.9.3
 
-  '@taladb/web@0.9.2':
-    resolution: {integrity: sha512-lg8xGPJwlnA5rOrlyNdrBjR0prZeAgUpQuRsstzDMvvV36yPsyQCNozLnfEaupKNz0J6Qwp8xucMZ2rhl3gMGg==}
+  '@taladb/web@0.9.3':
+    resolution: {integrity: sha512-bgpilzU3yDK2P0AT/e9ymG44N0wpvilRllO7G+P27tIGZtVf9MRUVSpSCL7PEE+MLhMcgoLP3AKwLwSE6I3XSw==}
     engines: {node: '>=18'}
 
   '@types/node@22.20.1':
@@ -899,8 +899,8 @@ packages:
   tailwindcss@4.3.2:
     resolution: {integrity: sha512-WtctNNSH8A9jlMIqxzuYumOHU5uGZyRv0Q5svQl+oEPy5w84YpBxdb7MdqyiSPQge5jTJ6zFQLq0PFygdccSBA==}
 
-  taladb@0.9.2:
-    resolution: {integrity: sha512-BGZF1F+I75oXNOFOy1aWGqtfJaaiC4k47b0a/nbJgoVJLbmEx91xOWoriW9xgGXOzkfHrzTsxNxXGUs/d7pUnA==}
+  taladb@0.9.3:
+    resolution: {integrity: sha512-71slQhZLkbI7pbIS2QOi64rytUGES+WW5n4h2jPAhPaUcUXTZHf5tLXxz2oTVjn5q7Dca8LPzDtyC3UDvz2NMg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@taladb/node': workspace:*
@@ -1280,19 +1280,19 @@ snapshots:
       postcss: 8.5.16
       tailwindcss: 4.3.2
 
-  '@taladb/next@0.9.2(@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2)))(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))':
+  '@taladb/next@0.9.3(@taladb/react@0.9.3(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3)))(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3))':
     dependencies:
-      taladb: 0.9.2(@taladb/web@0.9.2)
+      taladb: 0.9.3(@taladb/web@0.9.3)
     optionalDependencies:
-      '@taladb/react': 0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
+      '@taladb/react': 0.9.3(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3))
       react: 19.2.7
 
-  '@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))':
+  '@taladb/react@0.9.3(react@19.2.7)(taladb@0.9.3(@taladb/web@0.9.3))':
     dependencies:
       react: 19.2.7
-      taladb: 0.9.2(@taladb/web@0.9.2)
+      taladb: 0.9.3(@taladb/web@0.9.3)
 
-  '@taladb/web@0.9.2': {}
+  '@taladb/web@0.9.3': {}
 
   '@types/node@22.20.1':
     dependencies:
@@ -1625,11 +1625,11 @@ snapshots:
 
   tailwindcss@4.3.2: {}
 
-  taladb@0.9.2(@taladb/web@0.9.2):
+  taladb@0.9.3(@taladb/web@0.9.3):
     dependencies:
       js-yaml: 4.3.0
     optionalDependencies:
-      '@taladb/web': 0.9.2
+      '@taladb/web': 0.9.3
 
   tapable@2.3.3: {}
 

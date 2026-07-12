@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { TalaDB, Collection } from 'taladb'
+import type { TalaDB, Collection, CollectionOptions } from 'taladb'
 import type { Listing, ListingSeed, ListingVector, Booking, Favorite, Review } from './types'
 
 export const DB_NAME = 'hotels-v1.db'
@@ -74,16 +74,47 @@ const ReviewSchema = z.object({
 })
 
 /**
- * The strict local-write validators, by collection name. Used both by
- * `collections()` below (the direct-handle path) and by `lib/mutations.ts` (the
- * `useMutation` path, which resolves its own unconfigured handle and would
- * otherwise skip validation entirely).
+ * Per-collection options for the SYNCED collections — the single source of truth
+ * for both access paths:
+ *
+ *  - registered on `<TalaDBProvider collections={…}>`, so every hook
+ *    (`useCollection`/`useFind`/`useQuery`/`useMutation`) resolves a configured
+ *    handle and a hook-driven write is validated and `_v`-stamped;
+ *  - spread into `collections(db)` below for the direct-handle path (seeding,
+ *    imperative reads).
+ *
+ * Strict `schema` on the local write we control; tolerant `syncSchema` on the
+ * import boundary we don't. Per docs/guide/schema-and-sync-standards.md.
  */
-export const WRITE_SCHEMAS = {
-  bookings: BookingSchema,
-  favorites: FavoriteSchema,
-  reviews: ReviewSchema,
-} as const
+export const COLLECTION_OPTIONS = {
+  bookings: {
+    schema: BookingSchema,
+    syncSchema: {
+      version: BOOKING_V,
+      required: ['listingId', 'checkIn', 'checkOut'],
+      types: { listingId: 'str', guests: 'int', total: 'float', status: 'str' },
+      defaults: { status: 'upcoming', guests: 1 },
+    },
+  } satisfies CollectionOptions<Booking>,
+  favorites: {
+    schema: FavoriteSchema,
+    syncSchema: {
+      version: FAVORITE_V,
+      required: ['listingId'],
+      types: { listingId: 'str', pricePerNight: 'float' },
+      defaults: { pricePerNight: 0 },
+    },
+  } satisfies CollectionOptions<Favorite>,
+  reviews: {
+    schema: ReviewSchema,
+    syncSchema: {
+      version: REVIEW_V,
+      required: ['listingId', 'body'],
+      types: { listingId: 'str', rating: 'int', body: 'str' },
+      defaults: { rating: 5, author: 'Guest' },
+    },
+  } satisfies CollectionOptions<Review>,
+}
 
 export interface Collections {
   listings: Collection<Listing>
@@ -100,33 +131,9 @@ export function collections(db: TalaDB): Collections {
     listings: db.collection<Listing>('listings'),
     listingVectors: db.collection<ListingVector>('listing_vectors'),
 
-    bookings: db.collection<Booking>('bookings', {
-      schema: BookingSchema,
-      syncSchema: {
-        version: BOOKING_V,
-        required: ['listingId', 'checkIn', 'checkOut'],
-        types: { listingId: 'str', guests: 'int', total: 'float', status: 'str' },
-        defaults: { status: 'upcoming', guests: 1 },
-      },
-    }),
-    favorites: db.collection<Favorite>('favorites', {
-      schema: FavoriteSchema,
-      syncSchema: {
-        version: FAVORITE_V,
-        required: ['listingId'],
-        types: { listingId: 'str', pricePerNight: 'float' },
-        defaults: { pricePerNight: 0 },
-      },
-    }),
-    reviews: db.collection<Review>('reviews', {
-      schema: ReviewSchema,
-      syncSchema: {
-        version: REVIEW_V,
-        required: ['listingId', 'body'],
-        types: { listingId: 'str', rating: 'int', body: 'str' },
-        defaults: { rating: 5, author: 'Guest' },
-      },
-    }),
+    bookings: db.collection<Booking>('bookings', COLLECTION_OPTIONS.bookings),
+    favorites: db.collection<Favorite>('favorites', COLLECTION_OPTIONS.favorites),
+    reviews: db.collection<Review>('reviews', COLLECTION_OPTIONS.reviews),
   }
 }
 

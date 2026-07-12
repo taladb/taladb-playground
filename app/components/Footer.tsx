@@ -17,7 +17,7 @@ export function Footer() {
           </p>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Built with Next.js 16 · Tailwind v4 ·{' '}
-            <span className="font-mono">taladb · @taladb/web · @taladb/react · @taladb/next @ 0.9.2</span>
+            <span className="font-mono">taladb · @taladb/web · @taladb/react · @taladb/next @ 0.9.3</span>
           </p>
         </div>
       </div>

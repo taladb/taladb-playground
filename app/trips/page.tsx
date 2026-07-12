@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useQuery } from '@taladb/react'
+import { useMutation, useQuery } from '@taladb/react'
 import type { Booking, Favorite } from '@/lib/types'
-import { useBookings } from '@/lib/mutations'
 
 export default function TripsPage() {
   // Two synced slices, each a live query over the LOCAL replica with a scoped
@@ -17,7 +16,7 @@ export default function TripsPage() {
   // types strict end to end, which is the point.)
   const { data: trips } = useQuery<Booking>({ collection: 'bookings' })
   const { data: saved } = useQuery<Favorite>({ collection: 'favorites' })
-  const { mutate } = useBookings()
+  const { mutate } = useMutation<Booking>({ collection: 'bookings' })
 
   const sortedTrips = trips.slice().sort((a, b) => b.createdAt - a.createdAt)
 

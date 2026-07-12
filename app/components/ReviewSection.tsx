@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useCollection, useQuery } from '@taladb/react'
+import { useCollection, useMutation, useQuery } from '@taladb/react'
 import type { Listing, Review } from '@/lib/types'
-import { useReviews } from '@/lib/mutations'
 
 export function ReviewSection({ listing }: { listing: Listing }) {
   // Local-only catalog handle — used for the atomic $inc below. It is never
@@ -15,7 +14,7 @@ export function ReviewSection({ listing }: { listing: Listing }) {
     collection: 'reviews',
     filter: { listingId: listing.slug },
   })
-  const { mutateAsync } = useReviews()
+  const { mutateAsync } = useMutation<Review>({ collection: 'reviews' })
   const [body, setBody] = useState('')
   const [rating, setRating] = useState(5)
   const [q, setQ] = useState('')

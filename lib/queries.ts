@@ -36,11 +36,9 @@ export function buildFilter(f: ExploreFilters): Filter<Listing> | undefined {
   const clauses: Filter<Listing>[] = []
 
   if (f.cities.length) clauses.push({ city: { $in: f.cities } })
-  // `type` is a union, and taladb's `FieldOps<T>` is a *distributive* conditional
-  // (`T extends null | undefined ? … : …`), so it spreads over the union and infers
-  // `$in: 'Apartment'[] | 'House'[] | …` instead of `$in: ListingType[]`. Runtime is
-  // correct; this cast works around the inference. (Library fix: `[T] extends [null | undefined]`.)
-  if (f.types.length) clauses.push({ type: { $in: f.types } } as Filter<Listing>)
+  // `type` is a union field. This needed an `as Filter<Listing>` cast until
+  // taladb 0.9.3 stopped making `FieldOps<T>` a distributive conditional.
+  if (f.types.length) clauses.push({ type: { $in: f.types } })
 
   if (f.minPrice > PRICE_FLOOR || f.maxPrice < PRICE_CEIL) {
     const price: { $gte?: number; $lte?: number } = {}
@@ -83,12 +81,11 @@ const SORTS: Record<SortKey, Record<string, 1 | -1>> = {
 }
 
 /**
- * Exactly the fields a ListingCard renders. `$project` in TalaDB is
- * INCLUSION-only (an engine `{field: 0}` exclusion silently yields documents
- * containing just `_id`), so we name what we want rather than what we don't —
- * which is the clearer thing to write anyway. Notably this leaves `description`
- * behind: it is the single heaviest field, it is FTS-indexed and searchable, and
- * the grid never shows it.
+ * Exactly the fields a ListingCard renders. Naming what we want (rather than
+ * excluding what we don't) keeps the projection honest as the card evolves, and
+ * it is what `ListingCardDoc` is derived from. Notably this leaves `description`
+ * behind: the single heaviest field, FTS-indexed and searchable, never shown in
+ * the grid.
  */
 const CARD_FIELDS: ReadonlyArray<Exclude<keyof ListingCardDoc, '_id'>> = [
   'slug',
