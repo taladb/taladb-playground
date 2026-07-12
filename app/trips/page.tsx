@@ -1,14 +1,23 @@
 'use client'
 
 import Link from 'next/link'
-import { useCollection, useFind } from '@taladb/react'
+import { useQuery } from '@taladb/react'
 import type { Booking, Favorite } from '@/lib/types'
+import { useBookings } from '@/lib/mutations'
 
 export default function TripsPage() {
-  const bookings = useCollection<Booking>('bookings')
-  const favorites = useCollection<Favorite>('favorites')
-  const { data: trips } = useFind(bookings)
-  const { data: saved } = useFind(favorites)
+  // Two synced slices, each a live query over the LOCAL replica with a scoped
+  // background pull behind it — so the page paints from disk immediately and
+  // re-renders if the pull brings anything new. Both mount together, so their
+  // pulls already run in parallel.
+  //
+  // (`useQueries` would batch these into one call, but it types its entries as
+  // `Document`, which would force an `as Booking[]` at the read boundary — and
+  // the schema/sync standards forbid exactly that. Typed `useQuery<T>` keeps the
+  // types strict end to end, which is the point.)
+  const { data: trips } = useQuery<Booking>({ collection: 'bookings' })
+  const { data: saved } = useQuery<Favorite>({ collection: 'favorites' })
+  const { mutate } = useBookings()
 
   const sortedTrips = trips.slice().sort((a, b) => b.createdAt - a.createdAt)
 
@@ -50,14 +59,16 @@ export default function TripsPage() {
                 <div className="flex gap-2">
                   {t.status === 'upcoming' && (
                     <button
-                      onClick={() => bookings.updateOne({ _id: t._id }, { $set: { status: 'cancelled' } })}
+                      onClick={() =>
+                        mutate({ type: 'update', where: { _id: t._id }, set: { status: 'cancelled' } })
+                      }
                       className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
                     >
                       Cancel
                     </button>
                   )}
                   <button
-                    onClick={() => bookings.deleteOne({ _id: t._id })}
+                    onClick={() => mutate({ type: 'delete', where: { _id: t._id } })}
                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-slate-700 dark:hover:bg-red-950/40"
                   >
                     Remove

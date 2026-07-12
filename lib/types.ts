@@ -6,7 +6,7 @@ export interface Listing extends Document {
   name: string
   city: string
   country: string
-  type: 'Apartment' | 'House' | 'Villa' | 'Cabin' | 'Loft' | 'Cottage' | 'Studio' | 'Bungalow'
+  type: ListingType
   pricePerNight: number
   guests: number
   bedrooms: number
@@ -20,15 +20,54 @@ export interface Listing extends Document {
   lat: number
   lng: number
   image: string
-  /** 384-dim embedding — only populated lazily on the /discover page (Stage B). */
-  embedding?: number[]
+  /**
+   * Position of this listing in public/seed/listings.json. `embeddings.bin` is a
+   * flat Float32 array in that same order, so this is what lets the lazy vector
+   * seed pair each vector with the right listing without re-fetching the catalog.
+   */
+  seedIndex: number
 }
 
-/** Metadata rows shipped in public/seed/listings.json (no embedding). */
-export type ListingSeed = Omit<Listing, '_id' | 'embedding'>
+/** Metadata rows shipped in public/seed/listings.json. */
+export type ListingSeed = Omit<Listing, '_id' | 'seedIndex'>
+
+/**
+ * The projection the Explore grid actually reads — the shape `$project` returns.
+ * Typing the paged query as full `Listing` would be a lie: the pipeline
+ * deliberately leaves `description`/`amenities`/geo behind. A full `Listing` is
+ * structurally assignable to this, so detail pages can pass one straight in.
+ */
+export type ListingCardDoc = Pick<
+  Listing,
+  | '_id'
+  | 'slug'
+  | 'name'
+  | 'city'
+  | 'country'
+  | 'type'
+  | 'rating'
+  | 'reviewsCount'
+  | 'pricePerNight'
+  | 'guests'
+  | 'image'
+>
+
+/**
+ * A listing's 384-dim embedding, in its own collection so the catalog stays
+ * lean — a document read on Explore must never carry vectors it doesn't use.
+ * Seeded lazily on first visit to /discover. `city` is denormalised here so
+ * hybrid search (vector + metadata filter) is one `findNearest` call.
+ */
+export interface ListingVector extends Document {
+  slug: string
+  city: string
+  embedding: number[]
+}
 
 /** A user booking. Synced across devices/tabs. */
 export interface Booking extends Document {
+  /** Document shape version — stamped by the engine, travels with the doc. */
+  _v?: number
   listingId: string
   listingName: string
   city: string
@@ -45,6 +84,7 @@ export interface Booking extends Document {
 
 /** A saved/favorited listing. Synced. */
 export interface Favorite extends Document {
+  _v?: number
   listingId: string
   listingName: string
   city: string
@@ -55,12 +95,20 @@ export interface Favorite extends Document {
 
 /** A guest review. Synced. */
 export interface Review extends Document {
+  _v?: number
   listingId: string
   author: string
   rating: number
   body: string
   createdAt: number
 }
+
+/** The listing categories, and the single source of truth for `Listing['type']`. */
+export const LISTING_TYPES = [
+  'Apartment', 'House', 'Villa', 'Cabin', 'Loft', 'Cottage', 'Studio', 'Bungalow',
+] as const
+
+export type ListingType = (typeof LISTING_TYPES)[number]
 
 export const CITIES = [
   'Lisbon', 'Barcelona', 'Kyoto', 'Reykjavik', 'Cape Town', 'Queenstown',

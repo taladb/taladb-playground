@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@taladb/next':
-        specifier: 0.9.0
-        version: 0.9.0(@taladb/react@0.9.0(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0)))(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0))
+        specifier: 0.9.2
+        version: 0.9.2(@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2)))(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
       '@taladb/react':
-        specifier: 0.9.0
-        version: 0.9.0(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0))
+        specifier: 0.9.2
+        version: 0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
       '@taladb/web':
-        specifier: 0.9.0
-        version: 0.9.0
+        specifier: 0.9.2
+        version: 0.9.2
       next:
         specifier: ^16.2.10
         version: 16.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -27,8 +27,11 @@ importers:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
       taladb:
-        specifier: 0.9.0
-        version: 0.9.0(@taladb/web@0.9.0)
+        specifier: 0.9.2
+        version: 0.9.2(@taladb/web@0.9.2)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@huggingface/transformers':
         specifier: ^3.8.1
@@ -553,28 +556,28 @@ packages:
   '@tailwindcss/postcss@4.3.2':
     resolution: {integrity: sha512-rjVWYCa7Ngbi5AarT6k8TkxUG3Wl1QKzHdIZVsjZSzf36Jmo2IKZt/NHRAwly8oDkbBOH0YTu+CHuf9jPxMc+g==}
 
-  '@taladb/next@0.9.0':
-    resolution: {integrity: sha512-i0k84jrzl1svDt9ZZJuz2A9OjVqUw/3dDo+4E9UxVJYLtQhL2wNhC7H66fWIRg9jNwf6S4r8Zypqw0B4R+y/BA==}
+  '@taladb/next@0.9.2':
+    resolution: {integrity: sha512-GAh4/IVCUJck1zaVfiYsIzZhSK+WkHerv8l2sZ7PCHoPlCgsen17SczonwBDryJ2po3e90zVUiqw4NNZE/iSpg==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@taladb/react': ^0.9.0
+      '@taladb/react': ^0.9.2
       react: '>=18.0.0'
-      taladb: ^0.9.0
+      taladb: ^0.9.2
     peerDependenciesMeta:
       '@taladb/react':
         optional: true
       react:
         optional: true
 
-  '@taladb/react@0.9.0':
-    resolution: {integrity: sha512-9goQKvUgSZzldKs8p+N5+11A9obteSzYXq45IwHRNEaUxKbBKKkTCZNZOoJUypUOTiSeVvFAx7LTXpmeYELMzA==}
+  '@taladb/react@0.9.2':
+    resolution: {integrity: sha512-SvOHlQnB8QvHaQkcmnLC5Ei4mOG6DIp1KuvP3ajuvSc11KlPEpFKAIUrkTYeHK5eiwNsExa57maCeaDEOFAKAw==}
     engines: {node: '>=18'}
     peerDependencies:
       react: '>=18.0.0'
-      taladb: ^0.9.0
+      taladb: ^0.9.2
 
-  '@taladb/web@0.9.0':
-    resolution: {integrity: sha512-trTEtUDrxxq2/5sJcMaXNPAyXCoEtb5V4Pf6WdfY84MjKWcQrfUYB7eysw5j+1hcpKt2m9wKNOYFts+3d4+duQ==}
+  '@taladb/web@0.9.2':
+    resolution: {integrity: sha512-lg8xGPJwlnA5rOrlyNdrBjR0prZeAgUpQuRsstzDMvvV36yPsyQCNozLnfEaupKNz0J6Qwp8xucMZ2rhl3gMGg==}
     engines: {node: '>=18'}
 
   '@types/node@22.20.1':
@@ -896,8 +899,8 @@ packages:
   tailwindcss@4.3.2:
     resolution: {integrity: sha512-WtctNNSH8A9jlMIqxzuYumOHU5uGZyRv0Q5svQl+oEPy5w84YpBxdb7MdqyiSPQge5jTJ6zFQLq0PFygdccSBA==}
 
-  taladb@0.9.0:
-    resolution: {integrity: sha512-QBi/JbOIwc69t0ncDGhA97Wx7JYW1EK0j+f6ZNHjVVmLv+JimM483yHEPFapo9SJBjwAeh9F+En22FTyzpZQqw==}
+  taladb@0.9.2:
+    resolution: {integrity: sha512-BGZF1F+I75oXNOFOy1aWGqtfJaaiC4k47b0a/nbJgoVJLbmEx91xOWoriW9xgGXOzkfHrzTsxNxXGUs/d7pUnA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@taladb/node': workspace:*
@@ -939,6 +942,9 @@ packages:
   yallist@5.0.0:
     resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
     engines: {node: '>=18'}
+
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
 
@@ -1274,19 +1280,19 @@ snapshots:
       postcss: 8.5.16
       tailwindcss: 4.3.2
 
-  '@taladb/next@0.9.0(@taladb/react@0.9.0(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0)))(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0))':
+  '@taladb/next@0.9.2(@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2)))(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))':
     dependencies:
-      taladb: 0.9.0(@taladb/web@0.9.0)
+      taladb: 0.9.2(@taladb/web@0.9.2)
     optionalDependencies:
-      '@taladb/react': 0.9.0(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0))
+      '@taladb/react': 0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))
       react: 19.2.7
 
-  '@taladb/react@0.9.0(react@19.2.7)(taladb@0.9.0(@taladb/web@0.9.0))':
+  '@taladb/react@0.9.2(react@19.2.7)(taladb@0.9.2(@taladb/web@0.9.2))':
     dependencies:
       react: 19.2.7
-      taladb: 0.9.0(@taladb/web@0.9.0)
+      taladb: 0.9.2(@taladb/web@0.9.2)
 
-  '@taladb/web@0.9.0': {}
+  '@taladb/web@0.9.2': {}
 
   '@types/node@22.20.1':
     dependencies:
@@ -1619,11 +1625,11 @@ snapshots:
 
   tailwindcss@4.3.2: {}
 
-  taladb@0.9.0(@taladb/web@0.9.0):
+  taladb@0.9.2(@taladb/web@0.9.2):
     dependencies:
       js-yaml: 4.3.0
     optionalDependencies:
-      '@taladb/web': 0.9.0
+      '@taladb/web': 0.9.2
 
   tapable@2.3.3: {}
 
@@ -1650,3 +1656,5 @@ snapshots:
   undici-types@6.21.0: {}
 
   yallist@5.0.0: {}
+
+  zod@4.4.3: {}

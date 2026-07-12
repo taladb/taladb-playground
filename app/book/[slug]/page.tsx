@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useCollection, useFindOne } from '@taladb/react'
-import type { Booking, Listing } from '@/lib/types'
+import type { Listing } from '@/lib/types'
+import { useBookings } from '@/lib/mutations'
 
 function todayPlus(days: number): string {
   const d = new Date()
@@ -15,9 +16,11 @@ function todayPlus(days: number): string {
 export default function BookPage() {
   const { slug } = useParams<{ slug: string }>()
   const router = useRouter()
+  // Single-document read from the local catalog, served by the `slug` lookup.
   const listings = useCollection<Listing>('listings')
-  const bookings = useCollection<Booking>('bookings')
   const { data: listing, loading } = useFindOne(listings, { slug })
+  // Local-first write: committed to disk immediately, then pushed with retry.
+  const { mutateAsync } = useBookings()
 
   const [checkIn, setCheckIn] = useState(todayPlus(7))
   const [checkOut, setCheckOut] = useState(todayPlus(10))
@@ -38,19 +41,22 @@ export default function BookPage() {
   async function confirm() {
     if (!listing || nights < 1) return
     setSaving(true)
-    await bookings.insert({
-      listingId: listing.slug,
-      listingName: listing.name,
-      city: listing.city,
-      image: listing.image,
-      checkIn,
-      checkOut,
-      guests,
-      nights,
-      pricePerNight: listing.pricePerNight,
-      total,
-      status: 'upcoming',
-      createdAt: Date.now(),
+    await mutateAsync({
+      type: 'insert',
+      doc: {
+        listingId: listing.slug,
+        listingName: listing.name,
+        city: listing.city,
+        image: listing.image,
+        checkIn,
+        checkOut,
+        guests,
+        nights,
+        pricePerNight: listing.pricePerNight,
+        total,
+        status: 'upcoming',
+        createdAt: Date.now(),
+      },
     })
     router.push('/trips')
   }

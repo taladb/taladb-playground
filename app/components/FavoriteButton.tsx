@@ -1,24 +1,32 @@
 'use client'
 
 import { useCollection, useFindOne } from '@taladb/react'
-import type { Favorite, Listing } from '@/lib/types'
+import type { Favorite, ListingCardDoc } from '@/lib/types'
+import { useFavorites } from '@/lib/mutations'
 
-export function FavoriteButton({ listing }: { listing: Listing }) {
+export function FavoriteButton({ listing }: { listing: ListingCardDoc }) {
+  // The read stays a live query — favorites are small, mutable and synced, so
+  // the heart must re-render the moment another tab or device toggles it.
   const favorites = useCollection<Favorite>('favorites')
   const { data: existing } = useFindOne(favorites, { listingId: listing.slug })
+  // The write goes through useMutation: local-first + durable outbox + retry.
+  const { mutate } = useFavorites()
   const active = !!existing
 
-  async function toggle() {
+  function toggle() {
     if (existing) {
-      await favorites.deleteOne({ _id: existing._id })
+      mutate({ type: 'delete', where: { _id: existing._id } })
     } else {
-      await favorites.insert({
-        listingId: listing.slug,
-        listingName: listing.name,
-        city: listing.city,
-        image: listing.image,
-        pricePerNight: listing.pricePerNight,
-        createdAt: Date.now(),
+      mutate({
+        type: 'insert',
+        doc: {
+          listingId: listing.slug,
+          listingName: listing.name,
+          city: listing.city,
+          image: listing.image,
+          pricePerNight: listing.pricePerNight,
+          createdAt: Date.now(),
+        },
       })
     }
   }

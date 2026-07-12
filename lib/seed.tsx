@@ -2,11 +2,20 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useTalaDB } from '@taladb/react'
-import { ensureDocSeed, ensureUserIndexes, ensureVectorSeed, isVectorSeeded } from './db-schema'
+import {
+  collections,
+  ensureDocSeed,
+  ensureUserIndexes,
+  ensureVectorSeed,
+  isDocSeeded,
+  isVectorSeeded,
+} from './db-schema'
 
 interface SeedStatus {
   /** Document catalog ready (Stage A complete). */
   docReady: boolean
+  /** True only while the catalog is actually being downloaded + inserted. */
+  docSeeding: boolean
   /** Rows loaded / total during Stage A. */
   docLoaded: number
   docTotal: number
@@ -31,6 +40,7 @@ export function useSeedStatus(): SeedStatus {
 export function SeedGate({ children }: { children: React.ReactNode }) {
   const db = useTalaDB()
   const [docReady, setDocReady] = useState(false)
+  const [docSeeding, setDocSeeding] = useState(false)
   const [docLoaded, setDocLoaded] = useState(0)
   const [docTotal, setDocTotal] = useState(0)
   const [vectorReady, setVectorReady] = useState(false)
@@ -40,23 +50,46 @@ export function SeedGate({ children }: { children: React.ReactNode }) {
   const [wantVectors, setWantVectors] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Stage A: document catalog + user indexes.
+  // Stage A: register schemas, ensure indexes, seed the catalog ONCE per device.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
+        // Opening the collections with their options is what registers each
+        // `syncSchema` on the db, so `db.sync()` (and therefore every
+        // useQuery/useMutation pull) validates imported documents in the engine.
+        // Must happen before the first replication pass.
+        collections(db)
         await ensureUserIndexes(db)
+
+        // Warm start: the catalog is already on disk. Go straight to ready
+        // without ever showing a seeding state — this is the local-first path,
+        // and after the first visit it is the ONLY path.
+        if (await isDocSeeded(db)) {
+          if (cancelled) return
+          setDocReady(true)
+          setVectorReady(await isVectorSeeded(db))
+          return
+        }
+
+        // Cold start: first run on this device. This is the only time the seed
+        // asset is fetched.
+        if (cancelled) return
+        setDocSeeding(true)
         await ensureDocSeed(db, (loaded, total) => {
           if (cancelled) return
           setDocLoaded(loaded)
           setDocTotal(total)
         })
-        if (!cancelled) {
-          setDocReady(true)
-          setVectorReady(await isVectorSeeded(db))
-        }
+        if (cancelled) return
+        setDocSeeding(false)
+        setDocReady(true)
+        setVectorReady(await isVectorSeeded(db))
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) {
+          setDocSeeding(false)
+          setError(e instanceof Error ? e.message : String(e))
+        }
       }
     })()
     return () => {
@@ -91,6 +124,7 @@ export function SeedGate({ children }: { children: React.ReactNode }) {
 
   const value: SeedStatus = {
     docReady,
+    docSeeding,
     docLoaded,
     docTotal,
     vectorReady,

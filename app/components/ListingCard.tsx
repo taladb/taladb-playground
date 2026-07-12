@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import type { Listing } from '@/lib/types'
+import type { ListingCardDoc } from '@/lib/types'
 import { FavoriteButton } from './FavoriteButton'
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({ listing }: { listing: ListingCardDoc }) {
   return (
     <Link
       href={`/listing/${listing.slug}`}

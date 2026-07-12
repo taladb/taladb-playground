@@ -3,12 +3,17 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useTalaDB } from '@taladb/react'
-import type { VectorSearchResult } from 'taladb'
 import type { Listing } from '@/lib/types'
 import { CITIES } from '@/lib/types'
 import { collections } from '@/lib/db-schema'
 import { useSeedStatus } from '@/lib/seed'
 import { embedQuery, warmEmbedder } from '@/lib/embed'
+
+/** A catalog listing paired with its cosine-similarity score. */
+interface Hit {
+  listing: Listing
+  score: number
+}
 
 const EXAMPLES = [
   'a quiet place near the beach to unwind',
@@ -22,7 +27,7 @@ export default function DiscoverPage() {
   const { docReady, vectorReady, vectorSeeding, vectorLoaded, vectorTotal, startVectorSeed } = useSeedStatus()
   const [query, setQuery] = useState('')
   const [city, setCity] = useState('')
-  const [results, setResults] = useState<VectorSearchResult<Listing>[]>([])
+  const [results, setResults] = useState<Hit[]>([])
   const [searching, setSearching] = useState(false)
   const [ms, setMs] = useState<number | null>(null)
 
@@ -39,12 +44,24 @@ export default function DiscoverPage() {
     setQuery(text)
     try {
       const vec = await embedQuery(text)
-      const { listings } = collections(db)
+      const { listings, listingVectors } = collections(db)
       const filter = city ? { city } : undefined
       const t0 = performance.now()
-      const hits = await listings.findNearest('embedding', vec, 12, filter)
+      // Vectors live in their own collection, so the catalog stays lean. The
+      // city filter still rides along in the SAME findNearest call — that's the
+      // hybrid (metadata + vector) query, not a post-filter.
+      const hits = await listingVectors.findNearest('embedding', vec, 12, filter)
+      // Join the winners back to the catalog by slug — 12 documents, not 10,000.
+      const slugs = hits.map((h) => h.document.slug)
+      const docs = await listings.find({ slug: { $in: slugs } })
+      const bySlug = new Map(docs.map((l) => [l.slug, l]))
       setMs(Math.round((performance.now() - t0) * 10) / 10)
-      setResults(hits)
+      setResults(
+        hits.flatMap(({ document, score }) => {
+          const listing = bySlug.get(document.slug)
+          return listing ? [{ listing, score }] : []
+        }),
+      )
     } finally {
       setSearching(false)
     }
@@ -133,7 +150,7 @@ export default function DiscoverPage() {
 
       {results.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map(({ document: l, score }) => (
+          {results.map(({ listing: l, score }) => (
             <Link
               key={l.slug}
               href={`/listing/${l.slug}`}

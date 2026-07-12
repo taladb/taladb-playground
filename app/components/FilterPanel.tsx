@@ -1,9 +1,7 @@
 'use client'
 
-import { AMENITIES, CITIES } from '@/lib/types'
+import { AMENITIES, CITIES, LISTING_TYPES } from '@/lib/types'
 import { PRICE_CEIL, type ExploreFilters } from '@/lib/queries'
-
-const TYPES = ['Apartment', 'House', 'Villa', 'Cabin', 'Loft', 'Cottage', 'Studio', 'Bungalow']
 
 function Chip({
   label,
@@ -73,7 +71,7 @@ export function FilterPanel({
 
       <Section title="Property type">
         <div className="flex flex-wrap gap-1.5">
-          {TYPES.map((t) => (
+          {LISTING_TYPES.map((t) => (
             <Chip key={t} label={t} active={filters.types.includes(t)} onClick={() => set({ types: toggle(filters.types, t) })} />
           ))}
         </div>

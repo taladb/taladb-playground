@@ -1,32 +1,33 @@
 'use client'
 
-import { useDeferredValue, useMemo, useState } from 'react'
-import { useCollection, useFind } from '@taladb/react'
-import type { Listing } from '@/lib/types'
-import { buildFilter, DEFAULT_FILTERS, sortListings, type ExploreFilters, type SortKey } from '@/lib/queries'
+import { useDeferredValue, useState } from 'react'
+import {
+  DEFAULT_FILTERS,
+  activeFilterCount,
+  explainPipeline,
+  type ExploreFilters,
+  type SortKey,
+} from '@/lib/queries'
+import { useCatalogPage } from '@/lib/use-catalog'
 import { useSeedStatus } from '@/lib/seed'
 import { FilterPanel } from './components/FilterPanel'
 import { ListingCard } from './components/ListingCard'
 
-const PAGE_SIZE = 24
-
 export default function ExplorePage() {
   const { docReady } = useSeedStatus()
-  const listings = useCollection<Listing>('listings')
   const [filters, setFilters] = useState<ExploreFilters>(DEFAULT_FILTERS)
   const [sort, setSort] = useState<SortKey>('recommended')
-  const [page, setPage] = useState(1)
 
-  // Defer the filter so fast typing/slider drags don't thrash the live query.
+  // Defer the filter so fast typing/slider drags don't thrash the engine.
   const deferred = useDeferredValue(filters)
-  const filter = useMemo(() => buildFilter(deferred), [deferred])
-  const { data, loading } = useFind(listings, filter)
 
-  const sorted = useMemo(() => sortListings(data, sort), [data, sort])
-  const visible = sorted.slice(0, page * PAGE_SIZE)
-  const activeCount =
-    deferred.cities.length + deferred.types.length + deferred.amenities.length +
-    (deferred.keyword ? 1 : 0) + (deferred.minGuests > 1 ? 1 : 0) + (deferred.maxPrice < 500 ? 1 : 0)
+  // One page of documents, matched/sorted/paged inside TalaDB.
+  const { rows, total, loading, loadingMore, hasMore, loadMore, ms } = useCatalogPage(
+    deferred,
+    sort,
+    docReady,
+  )
+  const activeCount = activeFilterCount(deferred)
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,17 +35,15 @@ export default function ExplorePage() {
         <h1 className="text-2xl font-bold sm:text-3xl">Find your next stay</h1>
         <p className="mt-1 max-w-2xl text-sm text-indigo-50">
           Every listing, filter, and booking here lives in a database running{' '}
-          <strong>inside your browser</strong>. This page is powered entirely by TalaDB&apos;s
-          document queries — structured filters and full-text search, no server round-trips.
+          <strong>inside your browser</strong>. The catalog is seeded once, then never
+          downloaded again — each search below is matched, sorted and paged{' '}
+          <strong>inside TalaDB</strong>, with no server round-trip.
         </p>
         <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/15 p-1.5 backdrop-blur">
           <span className="pl-2 text-lg">🔎</span>
           <input
             value={filters.keyword}
-            onChange={(e) => {
-              setFilters({ ...filters, keyword: e.target.value })
-              setPage(1)
-            }}
+            onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
             placeholder="Search descriptions — try “beach”, “quiet garden”, “fireplace”…"
             className="w-full bg-transparent px-1 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
           />
@@ -53,13 +52,7 @@ export default function ExplorePage() {
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          <FilterPanel
-            filters={filters}
-            onChange={(f) => {
-              setFilters(f)
-              setPage(1)
-            }}
-          />
+          <FilterPanel filters={filters} onChange={setFilters} />
         </aside>
 
         <div className="flex flex-col gap-4">
@@ -70,9 +63,18 @@ export default function ExplorePage() {
               ) : (
                 <>
                   <span className="font-semibold text-slate-900 dark:text-white">
-                    {sorted.length.toLocaleString()}
+                    {total.toLocaleString()}
                   </span>{' '}
                   stays{activeCount ? ` · ${activeCount} filter${activeCount > 1 ? 's' : ''}` : ''}
+                  {ms !== null && (
+                    <>
+                      {' · '}
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                        {ms} ms
+                      </span>{' '}
+                      on-device
+                    </>
+                  )}
                 </>
               )}
             </p>
@@ -88,27 +90,30 @@ export default function ExplorePage() {
             </select>
           </div>
 
-          <QueryPreview filter={filter} />
+          <QueryPreview text={explainPipeline(deferred, sort, 1)} total={total} shown={rows.length} />
 
-          {loading && !docReady ? (
+          {loading ? (
             <GridSkeleton />
-          ) : sorted.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 dark:border-slate-700">
               No stays match these filters. Try widening your search.
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                {visible.map((l) => (
+                {rows.map((l) => (
                   <ListingCard key={l.slug} listing={l} />
                 ))}
               </div>
-              {visible.length < sorted.length && (
+              {hasMore && (
                 <button
-                  onClick={() => setPage((p) => p + 1)}
-                  className="mx-auto mt-2 rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="mx-auto mt-2 rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-900"
                 >
-                  Show more ({(sorted.length - visible.length).toLocaleString()} left)
+                  {loadingMore
+                    ? 'Loading…'
+                    : `Show more (${(total - rows.length).toLocaleString()} left)`}
                 </button>
               )}
             </>
@@ -119,14 +124,18 @@ export default function ExplorePage() {
   )
 }
 
-function QueryPreview({ filter }: { filter: object | undefined }) {
+function QueryPreview({ text, total, shown }: { text: string; total: number; shown: number }) {
   return (
     <details className="group rounded-xl border border-slate-200 bg-slate-100/60 text-xs dark:border-slate-800 dark:bg-slate-900/60">
       <summary className="cursor-pointer select-none px-3 py-2 font-medium text-slate-500 dark:text-slate-400">
-        The query TalaDB is running
+        The query TalaDB is running —{' '}
+        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          {shown.toLocaleString()} document{shown === 1 ? '' : 's'} crossed into JS
+        </span>{' '}
+        (of {total.toLocaleString()} matched)
       </summary>
       <pre className="overflow-x-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-indigo-700 dark:text-indigo-300">
-        {`listings.find(${JSON.stringify(filter ?? {}, null, 2)})`}
+        {text}
       </pre>
     </details>
   )

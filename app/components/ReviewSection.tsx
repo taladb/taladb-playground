@@ -1,18 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { useCollection, useFind } from '@taladb/react'
+import { useCollection, useQuery } from '@taladb/react'
 import type { Listing, Review } from '@/lib/types'
+import { useReviews } from '@/lib/mutations'
 
 export function ReviewSection({ listing }: { listing: Listing }) {
-  const reviews = useCollection<Review>('reviews')
+  // Local-only catalog handle — used for the atomic $inc below. It is never
+  // synced, so it needs no schema/`_v`.
   const listings = useCollection<Listing>('listings')
-  const { data } = useFind(reviews, { listingId: listing.slug })
+  // A synced slice, scoped to this listing: live over the local replica, with a
+  // scoped pull behind it. Backed by the `listingId` index.
+  const { data } = useQuery<Review>({
+    collection: 'reviews',
+    filter: { listingId: listing.slug },
+  })
+  const { mutateAsync } = useReviews()
   const [body, setBody] = useState('')
   const [rating, setRating] = useState(5)
   const [q, setQ] = useState('')
 
-  // FTS over this listing's reviews.
+  // Client-side narrowing over this listing's own reviews (a handful of rows).
   const shown = q.trim()
     ? data.filter((r) => r.body.toLowerCase().includes(q.trim().toLowerCase()))
     : data
@@ -20,14 +28,18 @@ export function ReviewSection({ listing }: { listing: Listing }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!body.trim()) return
-    await reviews.insert({
-      listingId: listing.slug,
-      author: 'You',
-      rating,
-      body: body.trim(),
-      createdAt: Date.now(),
+    await mutateAsync({
+      type: 'insert',
+      doc: {
+        listingId: listing.slug,
+        author: 'You',
+        rating,
+        body: body.trim(),
+        createdAt: Date.now(),
+      },
     })
-    // Bump the listing's review count with an atomic $inc update.
+    // Bump the listing's review count with an atomic $inc — a local-only write
+    // to the catalog, so it never crosses the sync boundary.
     await listings.updateOne({ slug: listing.slug }, { $inc: { reviewsCount: 1 } })
     setBody('')
   }
