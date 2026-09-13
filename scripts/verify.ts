@@ -99,6 +99,8 @@ async function main() {
   await ensureIndexes(db)
   const indexType = await ensureVectorIndex(db)
   check('seeded and indexed', true, `${(performance.now() - t0).toFixed(0)} ms, vector index: ${indexType}`)
+  check('index type suits the corpus size', indexType === 'flat',
+    'a few hundred memories scan faster than a graph traverses')
 
   const counts = await stats(db)
   check('corpus counts', counts.memoryCount > 300 && counts.entityCount > 40,
@@ -160,11 +162,16 @@ async function main() {
     `score ${nearest[0]?.score.toFixed(3)}`)
 
   const vstatus = await collections(db).memories.vectorIndexStatus('embedding')
-  check('vector index is populated', vstatus.indexedVectors > 300,
-    `${vstatus.state}, ${vstatus.indexedVectors}/${vstatus.totalVectors}, persistent=${vstatus.persistent}`)
+  // At this corpus size `ensureVectorIndex` picks the exact index on purpose,
+  // so there is no graph to populate — `indexedVectors` is 0 and that is right.
+  check('vector index covers every memory', vstatus.totalVectors === counts.memoryCount,
+    `${vstatus.state}, ${vstatus.totalVectors} vectors, persistent=${vstatus.persistent}`)
 
   const exec = await collections(db).memories.searchVectors('embedding', probe!.embedding as number[], 5)
-  check('execution record available', !!exec.execution.path,
+  // One distance per stored vector is what makes the result exact rather than
+  // approximate: nothing was skipped, so nothing can have been missed.
+  check('search is exhaustive, so results are exact',
+    exec.execution.path === 'exact' && exec.execution.distanceComputations === vstatus.totalVectors,
     `path=${exec.execution.path}, distances=${exec.execution.distanceComputations}`)
 
   console.log('\nHybrid (RRF fusion)')

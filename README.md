@@ -25,7 +25,7 @@ the questions people ask about their own history split cleanly in two:
 | *Who has my camera?* | **Document** | Loans with no later return — a set difference over two indexed reads |
 | *Which warranties expire soon?* | **Document** | Two-sided range scan on an indexed date |
 | *Where is my drill?* | **Graph** | Latest `movement`, then a containment walk: Home → Garage → Cabinet → Shelf B |
-| *bike keeps making a clicking noise* | **Vector** | The answer says "rattle" and "tapping". Zero keyword overlap. HNSW finds it anyway |
+| *bike keeps making a clicking noise* | **Vector** | The answer says "rattle" and "tapping". Zero keyword overlap. Similarity search finds it anyway |
 | *RT38K5930S8* | **Keyword** | A model code. BM25 nails it; a vector has nothing useful to say about a SKU |
 | *that camera I lent someone* | **Hybrid** | `hybridSearch` — both rankings fused by RRF in one call |
 
@@ -41,8 +41,8 @@ Every answer and every result row carries its attribution:
   (*"Loans with no later return for the same thing — two indexed reads, no ranking."*).
 - **Evidence rows** show `kw #3 · vec —`, the per-retriever ranks `hybridSearch` returns. A row
   marked `kw — · vec #1` is a memory **keyword search could not have found**.
-- **The inspector** reports the engine's own execution record: which index path ran (`hnsw` vs
-  `exact`), the effective `efSearch`, how many distance computations it actually performed, and
+- **The inspector** reports the engine's own execution record: which index path ran (`exact` vs
+  `hnsw`), the effective `efSearch`, how many distance computations it actually performed, and
   the total in milliseconds — with no network anywhere in it.
 
 ## Routes and the feature each one leans on
@@ -56,7 +56,7 @@ Every answer and every result row carries its attribution:
 | `/recall` | **The flagship.** Classify → structured → BM25 → vector → graph, with the retrieval inspector |
 | `/timeline` | `useAggregate` — a *live* paged pipeline, not a dead snapshot |
 | `/insights` | `$group`/`$sum` over the whole corpus by thing, by event kind, by year |
-| `/settings` | Vector index status, resumable rebuilds, **recall@10 measured against exact on your machine**, `listIndexes`, `storageInfo`, `compact`, export/import |
+| `/settings` | Which vector index is live and why, resumable rebuilds, `listIndexes`, `storageInfo`, `compact`, export/import |
 
 ## Local development
 
@@ -114,10 +114,15 @@ This app previously demonstrated 0.9 as a hotel-booking site. Three changes drov
 - **`useMutation` became `useWrite`** — a local write is not a network round-trip and should not
   borrow the name of one.
 - **Persistent HNSW reached the browser in 0.11.4.** Until then the browser fell back to an exact
-  flat scan because the graph needed native threads. Graphs now live in the same database as the
+  scan because the graph needed native threads. Graphs now live in the same database as the
   documents, update in the same transaction as an embedding write, and survive a reload with no
-  rebuild. `/settings` shows the status, and `storageInfo().hnsw` reports whether this particular
-  browser got it.
+  rebuild.
+
+  This app still uses the **exact** index, deliberately. An approximate graph trades accuracy for
+  fewer distance computations, and that only pays once scanning the collection is the expensive
+  part. A personal memory holds a few hundred memories — scanning all of them is well under a
+  millisecond — so a graph here would be slower *and* approximate. `lib/schema.ts` switches to
+  HNSW automatically past 20,000 vectors, and `/settings` shows which index is live and why.
 
 Turbopack needs **no configuration** from 0.11.1 onward — `next.config.ts` is down to a workspace
 root pin and the COOP/COEP headers, which exist for transformers.js SIMD rather than for TalaDB.

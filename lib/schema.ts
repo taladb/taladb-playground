@@ -222,17 +222,26 @@ export async function ensureIndexes(db: TalaDB): Promise<void> {
 }
 
 /**
- * Create the memory vector index, preferring a persistent HNSW graph.
+ * Create the memory vector index, choosing the algorithm by corpus size.
  *
- * Worth spelling out because it changed recently: until 0.11.4 the browser had
- * no choice but an exact flat scan — HNSW needed native threads, so it was
- * Node/React-Native only. 0.11.4 replaced that with portable graphs that live
- * in the same database as the documents and are updated in the same
- * transaction as an embedding write. Reopening needs no rebuild.
+ * 0.11.4 brought persistent HNSW graphs to the browser — until then the browser
+ * had no choice but an exact scan, because the graph needed native threads.
+ * Graphs now live in the same database as the documents, update in the same
+ * transaction as an embedding write, and survive a reload with no rebuild.
  *
- * `storageInfo()` still reports whether this particular browser got HNSW, and
- * a flat index answers the same queries exactly (just by scanning), so the
- * fallback is a performance difference and not a feature difference.
+ * This app still uses the exact index, and that is a deliberate choice rather
+ * than a leftover. An approximate index trades accuracy for a smaller number of
+ * distance computations, and that trade only pays once the collection is large
+ * enough that scanning it is the expensive part. A personal memory holds a few
+ * hundred memories: scanning all of them takes well under a millisecond, so a
+ * graph would make search *slower* — more per-step overhead, fewer steps saved —
+ * and approximate as well.
+ *
+ * Profiling the engine directly (taladb `examples/hnsw_profile`, 384
+ * dimensions) puts the crossover well above this corpus: at 2,000 vectors exact
+ * runs 0.64 ms/query against 4.66 ms for the graph. So the threshold below is
+ * set where the graph starts to earn its keep, and a corpus that grows past it
+ * gets one automatically.
  */
 export async function ensureVectorIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
   const { memories } = collections(db)
@@ -243,18 +252,23 @@ export async function ensureVectorIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
     return status.state === 'flat' ? 'flat' : 'hnsw'
   }
 
-  const info = await db.storageInfo?.()
-  const indexType = info?.hnsw === false ? 'flat' : 'hnsw'
+  // Below this, an exact scan is faster than a graph traversal and is exact
+  // as well, so there is nothing to trade.
+  const HNSW_FROM = 20_000
+
+  const [count, info] = await Promise.all([memories.count(), db.storageInfo?.()])
+  // `storageInfo().hnsw` reports whether this particular browser got graph
+  // support at all; without it the only option is the exact index anyway.
+  const indexType: 'hnsw' | 'flat' =
+    count >= HNSW_FROM && info?.hnsw !== false ? 'hnsw' : 'flat'
 
   await memories.createVectorIndex('embedding', {
     dimensions: VECTOR_DIM,
     metric: 'cosine',
     indexType,
-    // Modest M: this is a personal corpus (thousands, not millions), and a
-    // smaller graph builds faster on a phone without measurably hurting recall
-    // at this scale.
-    hnswM: 16,
-    hnswEfConstruction: 200,
+    // Modest M: a personal corpus is thousands, not millions, and a smaller
+    // graph builds far faster on a phone without measurably hurting recall.
+    ...(indexType === 'hnsw' ? { hnswM: 16, hnswEfConstruction: 200 } : {}),
   })
 
   return indexType

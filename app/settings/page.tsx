@@ -225,7 +225,7 @@ function VectorPanel({ db }: { db: TalaDB }) {
     <Panel
       title="Vector index"
       badge={<EngineBadge engine="vector" size="xs" />}
-      description="Persistent HNSW graphs landed on the browser in TalaDB 0.11.4. Before that the browser had to fall back to an exact scan, because the graph needed native threads."
+      description="Semantic search runs against an exact index here, on purpose: at a few hundred memories a full scan is well under a millisecond, so an approximate graph would be slower and less accurate at once. TalaDB builds a persistent HNSW graph instead once the collection is large enough to be worth it."
     >
       {status.loading && <p className="text-sm text-stone-500">Reading index status…</p>}
 
@@ -254,13 +254,23 @@ function VectorPanel({ db }: { db: TalaDB }) {
         </p>
       )}
 
+      {s?.state === 'flat' && (
+        <p className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400">
+          Every search here compares against all {s.totalVectors.toLocaleString()} vectors and
+          returns the true nearest neighbours. There is no recall to measure, because nothing is
+          being approximated.
+        </p>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <button onClick={() => void doRebuild()} disabled={!!busy} className="btn-ghost text-sm">
           {busy === 'rebuild' ? 'Rebuilding…' : 'Rebuild index'}
         </button>
-        <button onClick={() => void doMeasure()} disabled={!!busy} className="btn-ghost text-sm">
-          {busy === 'recall' ? 'Measuring…' : 'Measure recall vs exact'}
-        </button>
+        {s?.state !== 'flat' && (
+          <button onClick={() => void doMeasure()} disabled={!!busy} className="btn-ghost text-sm">
+            {busy === 'recall' ? 'Measuring…' : 'Measure recall vs exact'}
+          </button>
+        )}
         {busy === 'rebuild' && (
           <button onClick={() => abort.current?.abort()} className="btn-ghost text-sm">
             Cancel
