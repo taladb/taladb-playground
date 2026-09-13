@@ -2,40 +2,32 @@ import type { NextConfig } from 'next'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 
-const projectRoot = dirname(fileURLToPath(import.meta.url))
-
+/**
+ * Almost nothing is needed here any more.
+ *
+ * Up to taladb 0.11.0 this file had to transpile the TalaDB packages, alias the
+ * optional native `@taladb/node` addon to a stub, and mark it server-external,
+ * or Turbopack shipped the worker specifier unresolved. 0.11.1 fixed Node
+ * adapter resolution in browser builds, and the docs are explicit that
+ * Turbopack now needs no configuration at all.
+ *
+ * What remains is the workspace root pin (sibling projects in the parent tree
+ * each carry a lockfile) and cross-origin isolation, which is not for TalaDB —
+ * OPFS and the single-threaded `--target web` wasm work fine without it. It is
+ * for transformers.js, which only reaches SharedArrayBuffer + SIMD on a
+ * cross-origin-isolated page. That is the difference between embedding a
+ * memory in ~30 ms and ~120 ms. `credentialless` keeps no-cors images loading.
+ */
 const nextConfig: NextConfig = {
-  // Pin the workspace root (multiple lockfiles exist in the parent tree) and
-  // opt into Turbopack. `taladb`'s node entry statically references the optional
-  // native `@taladb/node` addon inside createNodeDB(), which never runs in the
-  // browser (or during client-component SSR, which only renders the fallback).
-  // Alias it to a stub so Turbopack can resolve the specifier at build time.
   turbopack: {
-    root: projectRoot,
-    resolveAlias: {
-      '@taladb/node': './lib/taladb-node-stub.js',
-    },
+    root: dirname(fileURLToPath(import.meta.url)),
   },
 
-  // Force Next's compiler to trace/emit the TalaDB browser worker + wasm.
-  // The browser client loads the DB via runtime URLs that are hardcoded inside
-  // node_modules:
-  //   taladb  ->  new Worker(new URL('@taladb/web/worker/taladb.worker.js', import.meta.url))
-  //           ->  worker: import('../pkg/taladb_web.js')
-  //           ->  fetch(new URL('taladb_web_bg.wasm', import.meta.url))
-  // Without transpiling these packages, Next treats them as opaque externals
-  // and ships the worker specifier unresolved.
-  transpilePackages: ['taladb', '@taladb/web', '@taladb/react', '@taladb/next'],
-
-  // Native N-API addon — only reached if the sync route uses taladbSyncStore.
-  // It must never be bundled into a client or edge chunk.
-  serverExternalPackages: ['@taladb/node'],
+  // Next 16 writes AGENTS.md / CLAUDE.md into the repo root on dev start. This
+  // is a demo repo whose README is its documentation, so keep the root clean.
+  agentRules: false,
 
   async headers() {
-    // OPFS + single-threaded (--target web) wasm do NOT strictly require cross
-    // origin isolation, but keeping COOP/COEP lets transformers.js use
-    // SharedArrayBuffer/SIMD for faster on-device embedding on /discover.
-    // `credentialless` keeps cross-origin (no-cors) images loading.
     return [
       {
         source: '/:path*',
@@ -45,15 +37,6 @@ const nextConfig: NextConfig = {
         ],
       },
     ]
-  },
-
-  // Only consulted when running the webpack compiler (`next dev/build --webpack`),
-  // the fallback if Turbopack fails to emit the prebuilt worker's nested import.
-  webpack(config) {
-    config.experiments = { ...config.experiments, asyncWebAssembly: true }
-    config.resolve = config.resolve || {}
-    config.resolve.alias = { ...config.resolve.alias, '@taladb/node': false }
-    return config
   },
 }
 

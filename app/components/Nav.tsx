@@ -2,101 +2,92 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { useSeedStatus } from '@/lib/seed'
-import { SyncStatusBadge } from './SyncStatusBadge'
 
 const LINKS = [
-  { href: '/', label: 'Explore' },
-  { href: '/trips', label: 'Trips' },
-  { href: '/admin', label: 'Host' },
-  { href: '/account', label: 'Account' },
-  { href: '/discover', label: 'Discover', ai: true },
+  { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/things', label: 'Things', icon: '📦' },
+  { href: '/recall', label: 'Recall', icon: '🔍' },
+  { href: '/timeline', label: 'Timeline', icon: '🕰️' },
+  { href: '/insights', label: 'Insights', icon: '📊' },
 ]
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(false)
-  useEffect(() => setDark(document.documentElement.classList.contains('dark')), [])
-  return (
-    <button
-      aria-label="Toggle theme"
-      onClick={() => {
-        const next = !dark
-        setDark(next)
-        document.documentElement.classList.toggle('dark', next)
-        localStorage.setItem('theme', next ? 'dark' : 'light')
-      }}
-      className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
-    >
-      {dark ? '☀️' : '🌙'}
-    </button>
-  )
-}
-
-function SeedBanner() {
-  const { docReady, docLoaded, docTotal, error } = useSeedStatus()
-  if (error) {
-    return (
-      <div className="bg-red-500 px-4 py-1.5 text-center text-xs font-medium text-white">
-        Database error: {error}
-      </div>
-    )
-  }
-  if (docReady) return null
-  const pct = docTotal ? Math.round((docLoaded / docTotal) * 100) : 0
-  return (
-    <div className="bg-indigo-600 px-4 py-1.5 text-center text-xs font-medium text-white">
-      Seeding {docTotal.toLocaleString()} listings into your on-device database…{' '}
-      {docTotal ? `${pct}%` : ''}
-    </div>
-  )
-}
 
 export function Nav() {
   const pathname = usePathname()
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href)
+
   return (
     <>
-      <SeedBanner />
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 tracking-tight">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-indigo-600 text-white">▲</span>
-            <span className="flex flex-col leading-tight">
-              <span className="font-semibold">Wanderdeck</span>
-              <span className="text-[10px] font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-                powered by TalaDB 0.9
-              </span>
-            </span>
+      {/* Desktop: a quiet top bar. */}
+      <header className="sticky top-0 z-30 hidden border-b bg-stone-50/85 backdrop-blur md:block dark:bg-stone-950/85">
+        <div className="mx-auto flex max-w-5xl items-center gap-1 px-6 py-3">
+          <Link href="/" className="mr-4 flex items-center gap-2 font-semibold tracking-tight">
+            <span aria-hidden>🧠</span>
+            Keepsake
           </Link>
-          <nav className="ml-2 hidden items-center gap-1 sm:flex">
-            {LINKS.map((l) => {
-              const active = l.href === '/' ? pathname === '/' : pathname.startsWith(l.href)
-              return (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    active
-                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900'
-                  }`}
-                >
-                  {l.label}
-                  {l.ai && (
-                    <span className="rounded bg-gradient-to-r from-fuchsia-500 to-violet-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                      AI
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
+
+          <nav className="flex items-center gap-1">
+            {LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActive(link.href) ? 'page' : undefined}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  isActive(link.href)
+                    ? 'bg-stone-200 font-medium text-stone-900 dark:bg-stone-800 dark:text-stone-100'
+                    : 'text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-900'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
+
           <div className="ml-auto flex items-center gap-2">
-            <SyncStatusBadge />
-            <ThemeToggle />
+            <Link href="/capture" className="btn-primary py-1.5 text-sm">
+              Remember something
+            </Link>
+            <Link
+              href="/settings"
+              aria-label="Settings"
+              className="rounded-lg p-2 text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-900"
+            >
+              ⚙️
+            </Link>
           </div>
         </div>
       </header>
+
+      {/* Mobile: a bottom bar, with capture as the standing action. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-stone-50/95 backdrop-blur md:hidden dark:bg-stone-950/95">
+        <div className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+          {LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={isActive(link.href) ? 'page' : undefined}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] ${
+                isActive(link.href)
+                  ? 'text-amber-700 dark:text-amber-400'
+                  : 'text-stone-500 dark:text-stone-400'
+              }`}
+            >
+              <span className="text-lg leading-none" aria-hidden>
+                {link.icon}
+              </span>
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
+
+      <Link
+        href="/capture"
+        aria-label="Remember something"
+        className="fixed bottom-20 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-stone-900 text-2xl text-white shadow-lg md:hidden dark:bg-amber-500 dark:text-stone-950"
+      >
+        +
+      </Link>
     </>
   )
 }

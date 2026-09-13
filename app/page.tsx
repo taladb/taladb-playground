@@ -1,152 +1,201 @@
 'use client'
 
-import { useDeferredValue, useState } from 'react'
-import {
-  DEFAULT_FILTERS,
-  activeFilterCount,
-  explainPipeline,
-  type ExploreFilters,
-  type SortKey,
-} from '@/lib/queries'
-import { useCatalogPage } from '@/lib/use-catalog'
-import { useSeedStatus } from '@/lib/seed'
-import { FilterPanel } from './components/FilterPanel'
-import { ListingCard } from './components/ListingCard'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useTalaDB, useCollection, useAggregate } from '@taladb/react'
+import { openLoans, warrantiesExpiring, recentMemoriesPipeline, stats } from '@/lib/queries'
+import { useAsync } from '@/lib/use-async'
+import { fullDate, plural, relative } from '@/lib/format'
+import { MemoryCard } from './components/MemoryCard'
+import { EngineBadge } from './components/EngineBadge'
+import type { Memory, MemoryRow } from '@/lib/types'
 
-export default function ExplorePage() {
-  const { docReady } = useSeedStatus()
-  const [filters, setFilters] = useState<ExploreFilters>(DEFAULT_FILTERS)
-  const [sort, setSort] = useState<SortKey>('recommended')
+/**
+ * Capture first.
+ *
+ * The spec's central claim is that the fundamental action is "remember this",
+ * not "create a note", so the first thing on the screen is a box to type into
+ * and everything else is what the database already knows.
+ *
+ * The two attention panels underneath are both pure document-engine work — a
+ * set difference for loans, a range scan for warranties. They are here because
+ * they are the cases where an exact answer has real consequences: someone still
+ * has your camera, and a warranty runs out on a date.
+ */
+export default function HomePage() {
+  const db = useTalaDB()
+  const router = useRouter()
+  const [draft, setDraft] = useState('')
 
-  // Defer the filter so fast typing/slider drags don't thrash the engine.
-  const deferred = useDeferredValue(filters)
-
-  // One page of documents, matched/sorted/paged inside TalaDB.
-  const { rows, total, loading, loadingMore, hasMore, loadMore, ms } = useCatalogPage(
-    deferred,
-    sort,
-    docReady,
+  const memories = useCollection<Memory>('memories')
+  const { data: recent, loading } = useAggregate<Memory, MemoryRow>(
+    memories,
+    recentMemoriesPipeline(6),
   )
-  const activeCount = activeFilterCount(deferred)
+
+  const loans = useAsync(() => openLoans(db), [db])
+  const warranties = useAsync(() => warrantiesExpiring(db, 60), [db])
+  const counts = useAsync(() => stats(db), [db])
+
+  function submitDraft(e: React.FormEvent) {
+    e.preventDefault()
+    const text = draft.trim()
+    if (!text) return
+    router.push(`/capture?text=${encodeURIComponent(text)}`)
+  }
+
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-3xl bg-gradient-to-br from-indigo-600 to-blue-600 p-6 text-white shadow-sm sm:p-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">Find your next stay</h1>
-        <p className="mt-1 max-w-2xl text-sm text-indigo-50">
-          Every listing, filter, and booking here lives in a database running{' '}
-          <strong>inside your browser</strong>. The catalog is seeded once, then never
-          downloaded again — each search below is matched, sorted and paged{' '}
-          <strong>inside TalaDB</strong>, with no server round-trip.
-        </p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/15 p-1.5 backdrop-blur">
-          <span className="pl-2 text-lg">🔎</span>
-          <input
-            value={filters.keyword}
-            onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
-            placeholder="Search descriptions — try “beach”, “quiet garden”, “fireplace”…"
-            className="w-full bg-transparent px-1 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
+    <div className="space-y-10">
+      {/* --- capture ------------------------------------------------------- */}
+      <section>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{greeting}</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          What do you want to remember?
+        </h1>
+
+        <form onSubmit={submitDraft} className="mt-4">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitDraft(e)
+            }}
+            rows={3}
+            placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200."
+            className="field resize-none text-base leading-relaxed"
           />
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Write it the way you would say it. The date, the amount and the thing it happened to
+              get picked out for you to confirm.
+            </p>
+            <button type="submit" disabled={!draft.trim()} className="btn-primary shrink-0">
+              Continue
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* --- things that need attention ------------------------------------ */}
+      {(loans.data?.length || warranties.data?.length) && (
+        <section className="grid gap-4 md:grid-cols-2">
+          {!!loans.data?.length && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">Still lent out</h2>
+                <EngineBadge engine="structured" size="xs" />
+              </div>
+              <ul className="mt-3 space-y-2.5">
+                {loans.data.map((loan) => (
+                  <li key={loan.memory._id} className="flex items-baseline justify-between gap-3 text-sm">
+                    <Link
+                      href={`/entity/${loan.entity?._id ?? ''}`}
+                      className="truncate hover:text-amber-700 dark:hover:text-amber-400"
+                    >
+                      <span aria-hidden>{loan.entity?.icon} </span>
+                      {loan.entity?.name ?? 'Unknown'}
+                    </Link>
+                    <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
+                      {loan.borrower?.name ?? 'someone'} · {plural(loan.daysOut, 'day')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-[11px] text-stone-400 dark:text-stone-500">
+                Loans with no later return recorded against them.
+              </p>
+            </div>
+          )}
+
+          {!!warranties.data?.length && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">Warranties running out</h2>
+                <EngineBadge engine="structured" size="xs" />
+              </div>
+              <ul className="mt-3 space-y-2.5">
+                {warranties.data.map(({ entity, daysLeft }) => (
+                  <li key={entity._id} className="flex items-baseline justify-between gap-3 text-sm">
+                    <Link
+                      href={`/entity/${entity._id}`}
+                      className="truncate hover:text-amber-700 dark:hover:text-amber-400"
+                    >
+                      <span aria-hidden>{entity.icon} </span>
+                      {entity.name}
+                    </Link>
+                    <span
+                      className={`shrink-0 text-xs ${
+                        daysLeft <= 30
+                          ? 'font-medium text-rose-600 dark:text-rose-400'
+                          : 'text-stone-500 dark:text-stone-400'
+                      }`}
+                    >
+                      {relative(entity.warrantyExpiresAt!)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-[11px] text-stone-400 dark:text-stone-500">
+                Range scan over the warranty date index.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* --- recent -------------------------------------------------------- */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Recently remembered</h2>
+          <Link href="/timeline" className="text-sm text-stone-500 hover:text-amber-700 dark:hover:text-amber-400">
+            Full timeline →
+          </Link>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {loading && <div className="card h-24 animate-pulse bg-stone-100 dark:bg-stone-900" />}
+          {recent.map((memory) => (
+            <MemoryCard key={memory._id} memory={memory} />
+          ))}
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <FilterPanel filters={filters} onChange={setFilters} />
-        </aside>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {!docReady ? (
-                'Loading catalog…'
-              ) : (
-                <>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {total.toLocaleString()}
-                  </span>{' '}
-                  stays{activeCount ? ` · ${activeCount} filter${activeCount > 1 ? 's' : ''}` : ''}
-                  {ms !== null && (
-                    <>
-                      {' · '}
-                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                        {ms} ms
-                      </span>{' '}
-                      on-device
-                    </>
-                  )}
-                </>
-              )}
-            </p>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <option value="recommended">Recommended</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-              <option value="rating">Top rated</option>
-            </select>
-          </div>
-
-          <QueryPreview text={explainPipeline(deferred, sort, 1)} total={total} shown={rows.length} />
-
-          {loading ? (
-            <GridSkeleton />
-          ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 dark:border-slate-700">
-              No stays match these filters. Try widening your search.
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                {rows.map((l) => (
-                  <ListingCard key={l.slug} listing={l} />
-                ))}
+      {/* --- what is on this device ---------------------------------------- */}
+      {counts.data && (
+        <section className="card p-5">
+          <h2 className="text-sm font-semibold">On this device</h2>
+          <dl className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              ['Things & people', counts.data.entityCount],
+              ['Memories', counts.data.memoryCount],
+              ['Connections', counts.data.relationCount],
+              ['Embedded', counts.data.embedded],
+            ].map(([label, value]) => (
+              <div key={label as string}>
+                <dt className="text-xs text-stone-500 dark:text-stone-400">{label}</dt>
+                <dd className="tnum mt-0.5 text-xl font-semibold">
+                  {(value as number).toLocaleString()}
+                </dd>
               </div>
-              {hasMore && (
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="mx-auto mt-2 rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-900"
-                >
-                  {loadingMore
-                    ? 'Loading…'
-                    : `Show more (${(total - rows.length).toLocaleString()} left)`}
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
+            ))}
+          </dl>
+          <p className="mt-4 text-xs text-stone-500 dark:text-stone-400">
+            Seeded once on your first visit and stored in OPFS. Every page since has been read from
+            disk — no request has left this browser.{' '}
+            <Link href="/settings" className="underline underline-offset-2">
+              Storage and export
+            </Link>
+          </p>
+        </section>
+      )}
 
-function QueryPreview({ text, total, shown }: { text: string; total: number; shown: number }) {
-  return (
-    <details className="group rounded-xl border border-slate-200 bg-slate-100/60 text-xs dark:border-slate-800 dark:bg-slate-900/60">
-      <summary className="cursor-pointer select-none px-3 py-2 font-medium text-slate-500 dark:text-slate-400">
-        The query TalaDB is running —{' '}
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          {shown.toLocaleString()} document{shown === 1 ? '' : 's'} crossed into JS
-        </span>{' '}
-        (of {total.toLocaleString()} matched)
-      </summary>
-      <pre className="overflow-x-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-indigo-700 dark:text-indigo-300">
-        {text}
-      </pre>
-    </details>
-  )
-}
-
-function GridSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-      ))}
+      <p className="text-center text-xs text-stone-400 dark:text-stone-600">
+        {recent[0] ? `Last memory: ${fullDate(recent[0].occurredAt)}` : null}
+      </p>
     </div>
   )
 }

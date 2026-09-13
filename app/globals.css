@@ -2,9 +2,27 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/*
+ * A warm, archival palette rather than the usual cool product blue — this is a
+ * place where personal history accumulates, and paper is the right metaphor.
+ *
+ * The one part of the palette doing real work is the engine colours. Every
+ * result in the app is attributed to whichever engine produced it, and the same
+ * three hues mean the same three things everywhere: sky for the document
+ * engine's exact answers, violet for vector similarity, emerald for a graph
+ * walk. Hybrid results carry both sky and violet, because that is precisely
+ * what they are.
+ */
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+
+  --color-paper: oklch(0.986 0.006 85);
+  --color-paper-dark: oklch(0.17 0.008 75);
+
+  --color-engine-doc: var(--color-sky-600);
+  --color-engine-vector: var(--color-violet-600);
+  --color-engine-graph: var(--color-emerald-600);
 }
 
 @layer base {
@@ -15,22 +33,70 @@
   }
 
   * {
-    @apply border-slate-200 dark:border-slate-800;
+    @apply border-stone-200 dark:border-stone-800;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100;
   }
 
   ::selection {
-    @apply bg-indigo-500/25;
+    @apply bg-amber-500/25;
   }
 
-  /* Consistent form-control styling so inputs read clearly in both themes. */
   input,
   textarea,
   select {
-    @apply text-slate-900 placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500;
+    @apply text-stone-900 placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500;
+  }
+
+  /* The app is a tool, not a document — keep focus rings visible but calm. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-amber-500;
+  }
+}
+
+@layer components {
+  /*
+   * Each of these is written out in full rather than composed from the others.
+   * Tailwind v4's `@apply` resolves utilities only — it cannot apply a custom
+   * class defined in the same layer — so `.btn-primary { @apply btn … }` fails
+   * the build outright.
+   */
+  .card {
+    @apply rounded-2xl border bg-white shadow-sm dark:bg-stone-900/60;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
+           transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
+           transition-colors disabled:cursor-not-allowed disabled:opacity-50
+           bg-stone-900 text-white hover:bg-stone-700
+           dark:bg-amber-500 dark:text-stone-950 dark:hover:bg-amber-400;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm
+           font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50
+           bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800;
+  }
+
+  .field {
+    @apply w-full rounded-xl border bg-white px-3 py-2 text-sm
+           focus:border-amber-500 focus:outline-none dark:bg-stone-900;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
+
+  /* Monospace numerals so columns of money and latency line up. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -38,12 +104,28 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+
+  /* Used on the timeline rail. */
+  .timeline-rail {
+    @apply absolute left-[11px] top-2 bottom-0 w-px bg-stone-200 dark:bg-stone-800;
+  }
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 .spinner {
-  @apply rounded-full border-2 border-slate-200 dark:border-slate-700 animate-spin;
-  border-top-color: var(--color-indigo-500);
+  @apply rounded-full border-2 border-stone-200 dark:border-stone-700;
+  animation: spin 0.7s linear infinite;
+  border-top-color: var(--color-amber-500);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
 }

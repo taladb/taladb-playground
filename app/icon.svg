@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#14b8a6"/>
-  <path d="M16 7 L25 24 L7 24 Z" fill="white"/>
+  <rect width="32" height="32" rx="7" fill="#f59e0b"/>
+  <!-- A thread running through three moments: the timeline, abstracted. -->
+  <path d="M8 23 Q12 9 16 16 Q20 23 24 9" stroke="#1c1917" stroke-width="2.25"
+        stroke-linecap="round" fill="none"/>
+  <circle cx="8" cy="23" r="2.4" fill="#1c1917"/>
+  <circle cx="16" cy="16" r="2.4" fill="#1c1917"/>
+  <circle cx="24" cy="9" r="2.4" fill="#1c1917"/>
 </svg>

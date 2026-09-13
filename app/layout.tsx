@@ -1,37 +1,35 @@
-import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 import { Nav } from './components/Nav'
 import { Footer } from './components/Footer'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap' })
-
 export const metadata: Metadata = {
-  title: 'Wanderdeck — a local-first booking demo on TalaDB 0.9',
+  title: 'Keepsake — a private memory for your real world',
   description:
-    'A full hotel-booking site that runs its database in your browser. Powered by TalaDB 0.9 — documents, full-text & vector search, aggregation, encryption, and offline-first sync.',
+    'A local-first personal memory system. Your things, people, places and everything that happened to them — searchable offline, on-device, in TalaDB.',
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafaf9' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0a09' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Set the theme class before paint to avoid a flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
-          }}
-        />
-      </head>
-      <body className={`${inter.variable} ${mono.variable} min-h-screen antialiased`}>
+      <body className="min-h-dvh">
+        {/*
+          The provider opens the database in an effect, so nothing beneath it is
+          server-rendered. That is fine for an app whose entire content is the
+          user's own private data — there is nothing here to index.
+        */}
         <Providers>
-          <div className="flex min-h-screen flex-col">
-            <Nav />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6 sm:px-6">{children}</main>
-            <Footer />
-          </div>
+          <Nav />
+          <main className="mx-auto max-w-5xl px-5 pb-28 pt-6 md:px-6 md:pb-16">{children}</main>
+          <Footer />
         </Providers>
       </body>
     </html>

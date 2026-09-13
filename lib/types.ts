@@ -1,123 +1,273 @@
 import type { Document } from 'taladb'
 
-/** A bookable stay. This is the ~10k-row catalog seeded from public/seed. */
-export interface Listing extends Document {
+// ---------------------------------------------------------------------------
+// The domain is entity-first, not note-first: things, people, places, projects —
+// and a timeline of what happened to each. Everything below is one of three
+// shapes: an Entity (something in your world), a Memory (something that
+// happened), or a Relation (how two of them connect).
+// ---------------------------------------------------------------------------
+
+export type EntityType =
+  | 'thing'
+  | 'person'
+  | 'place'
+  | 'organization'
+  | 'project'
+  | 'document'
+
+export const ENTITY_TYPES: EntityType[] = [
+  'thing',
+  'person',
+  'place',
+  'organization',
+  'project',
+  'document',
+]
+
+/**
+ * Something meaningful in the user's world.
+ *
+ * Core attributes are columns; everything category-specific lives in
+ * `attributes`. Hardcoding a field per category (tyre size, battery model,
+ * lens mount, …) is how an inventory app ends up with 200 nullable columns, so
+ * the schema stays deliberately thin and the long tail is a free-form map.
+ */
+export interface Entity extends Document {
+  entityType: EntityType
+  /** Stable human key. Drives `deriveDocId`, the QR payload, and URLs. */
   slug: string
   name: string
-  city: string
-  country: string
-  type: ListingType
-  pricePerNight: number
-  guests: number
-  bedrooms: number
-  bathrooms: number
-  rating: number
-  reviewsCount: number
-  amenities: string[]
-  /** Lowercased space-joined amenities — FTS-indexed so amenity filters use $contains. */
-  amenitiesText: string
   description: string
-  lat: number
-  lng: number
-  image: string
+  /** Free-form, e.g. 'Bicycle', 'Laptop', 'Contractor'. Not an enum on purpose. */
+  category: string
+  icon: string
+
+  // --- Thing attributes. All optional; a Person has none of them. -----------
+  manufacturer?: string
+  model?: string
+  serialNumber?: string
+  purchasePrice?: number
+  purchasedAt?: number
+  warrantyExpiresAt?: number
+  condition?: string
+
   /**
-   * Position of this listing in public/seed/listings.json. `embeddings.bin` is a
-   * flat Float32 array in that same order, so this is what lets the lazy vector
-   * seed pair each vector with the right listing without re-fetching the catalog.
+   * Parent entity. Gives places their hierarchy (Home → Garage → Cabinet →
+   * Shelf B) and lets a Thing hang off a Collection. Traversed recursively by
+   * `lib/graph.ts` rather than stored as a materialised path, so moving a
+   * cabinet doesn't require rewriting every descendant.
    */
-  seedIndex: number
-}
+  parentId?: string
 
-/** Metadata rows shipped in public/seed/listings.json. */
-export type ListingSeed = Omit<Listing, '_id' | 'seedIndex'>
+  /** Category-specific fields the core schema deliberately doesn't know about. */
+  attributes?: Record<string, string>
+
+  /** Queryable array — `{ tags: 'loanable' }` matches an element (taladb 0.11). */
+  tags?: string[]
+
+  /** Denormalised for the entity browser's FTS index. */
+  searchText: string
+
+  createdAt: number
+  updatedAt: number
+  archivedAt?: number
+}
 
 /**
- * The projection the Explore grid actually reads — the shape `$project` returns.
- * Typing the paged query as full `Listing` would be a lie: the pipeline
- * deliberately leaves `description`/`amenities`/geo behind. A full `Listing` is
- * structurally assignable to this, so detail pages can pass one straight in.
+ * What happened. The 16 types come from the spec's capture vocabulary; `note`
+ * is the fallback when the extractor can't classify and the user didn't say.
  */
-export type ListingCardDoc = Pick<
-  Listing,
-  | '_id'
-  | 'slug'
-  | 'name'
-  | 'city'
-  | 'country'
-  | 'type'
-  | 'rating'
-  | 'reviewsCount'
-  | 'pricePerNight'
-  | 'guests'
-  | 'image'
->
+export type MemoryType =
+  | 'note'
+  | 'purchase'
+  | 'maintenance'
+  | 'repair'
+  | 'loan'
+  | 'return'
+  | 'movement'
+  | 'decision'
+  | 'expense'
+  | 'observation'
+  | 'conversation'
+  | 'appointment'
+  | 'installation'
+  | 'replacement'
+  | 'warranty'
+
+export const MEMORY_TYPES: MemoryType[] = [
+  'note',
+  'purchase',
+  'maintenance',
+  'repair',
+  'loan',
+  'return',
+  'movement',
+  'decision',
+  'expense',
+  'observation',
+  'conversation',
+  'appointment',
+  'installation',
+  'replacement',
+  'warranty',
+]
+
+/** Where a fact came from. Shown in the UI so an extraction is never silent. */
+export type SourceType =
+  | 'user_entered'
+  | 'document_extracted'
+  | 'photo_extracted'
+  | 'imported'
+  | 'system_inferred'
+
+/** Three user-facing confidence bands, per the spec's provenance model. */
+export type Confidence = 'confirmed' | 'extracted' | 'inferred'
 
 /**
- * A listing's 384-dim embedding, in its own collection so the catalog stays
- * lean — a document read on Explore must never carry vectors it doesn't use.
- * Seeded lazily on first visit to /discover. `city` is denormalised here so
- * hybrid search (vector + metadata filter) is one `findNearest` call.
+ * A single remembered event.
+ *
+ * ## Why the embedding lives on this document
+ *
+ * The instinct — and what the previous demo did with listings — is to keep
+ * vectors in their own collection so an ordinary read never drags 384 floats
+ * per row across the worker boundary. That instinct is right, but `hybridSearch`
+ * fuses a BM25 ranking over `content` with a vector ranking over `embedding`,
+ * and it can only do that when **both indexes are on the same collection**.
+ * Splitting them would mean two queries and hand-rolled rank fusion in JS,
+ * which is precisely the part worth not writing.
+ *
+ * So the vector stays here and every list-shaped read projects it away with
+ * `$project: { embedding: 0 }` (see `lib/queries.ts`). The cost is paid only by
+ * the queries that actually rank.
  */
-export interface ListingVector extends Document {
-  slug: string
-  city: string
-  embedding: number[]
+export interface MemoryFields {
+  memoryType: MemoryType
+  title: string
+  /** The prose. FTS-indexed, and the text that gets embedded. */
+  content: string
+  occurredAt: number
+
+  /**
+   * Every entity this memory touches, denormalised onto the document as a
+   * queryable array. A join collection would be the textbook answer, but
+   * taladb 0.11 indexes array membership directly — `{ entityIds: id }` matches
+   * a document whose array contains `id` — so an entity's whole timeline is one
+   * indexed lookup instead of a two-step fetch-then-fan-out.
+   */
+  entityIds: string[]
+  /** Denormalised names, so a timeline row renders without resolving entities. */
+  entityNames: string[]
+
+  /** The subject — the thing the event happened *to*. First-class for timelines. */
+  subjectId?: string
+  /** Who performed or received it: a Person or Organization. */
+  actorId?: string
+  /** Where it happened, or where the subject ended up (for `movement`). */
+  placeId?: string
+
+  amount?: number
+  currency?: string
+
+  /** Loan bookkeeping. A `loan` opens; the matching `return` closes it. */
+  loanClosedByMemoryId?: string
+
+  sourceType: SourceType
+  confidence: Confidence
+  /** 0–1. Only meaningful for `extracted` / `inferred`. */
+  confidenceScore?: number
+
+  tags?: string[]
+
+  createdAt: number
+  updatedAt: number
 }
 
-/** A user booking. Synced across devices/tabs. */
-export interface Booking extends Document {
-  /** Document shape version — stamped by the engine, travels with the doc. */
-  _v?: number
-  listingId: string
-  listingName: string
-  city: string
-  image: string
-  checkIn: string // ISO date (yyyy-mm-dd)
-  checkOut: string
-  guests: number
-  nights: number
-  pricePerNight: number
-  total: number
-  status: 'upcoming' | 'completed' | 'cancelled'
+/**
+ * A single remembered event.
+ *
+ * ## Why the embedding lives on this document
+ *
+ * The instinct — and what the previous demo did with listings — is to keep
+ * vectors in their own collection so an ordinary read never drags 384 floats
+ * per row across the worker boundary. That instinct is right, but `hybridSearch`
+ * fuses a BM25 ranking over `content` with a vector ranking over `embedding`,
+ * and it can only do that when **both indexes are on the same collection**.
+ * Splitting them would mean two queries and hand-rolled rank fusion in JS,
+ * which is precisely the part worth not writing.
+ *
+ * So the vector stays here and every list-shaped read projects it away with
+ * `$project: { embedding: 0 }` (see `lib/queries.ts`). The cost is paid only by
+ * the queries that actually rank.
+ */
+export interface Memory extends MemoryFields, Document {
+  /** 384 floats when the semantic layer is on; absent when it is off. */
+  embedding?: number[]
+  /** Model that produced `embedding`. Vectors are never canonical — see §46. */
+  embeddingModel?: string
+}
+
+/**
+ * A memory with its vector projected away — what every list view reads.
+ *
+ * Spelled out rather than written as `Omit<Memory, 'embedding'>`, because
+ * `Omit` over a type carrying an index signature keeps the signature and drops
+ * every specific field type with it: `row.occurredAt` would come back as
+ * `Value | undefined` instead of `number`, and every arithmetic use of it would
+ * need a cast.
+ */
+export interface MemoryRow extends MemoryFields, Document {}
+
+/**
+ * A typed edge. Entity→Entity and Memory→Entity links both live here, so graph
+ * traversal is one collection scan regardless of what is being connected.
+ */
+export type RelationType =
+  | 'owns'
+  | 'stored_at'
+  | 'located_in'
+  | 'purchased_from'
+  | 'serviced_by'
+  | 'borrowed_by'
+  | 'part_of'
+  | 'related_to'
+
+export interface Relation extends Document {
+  sourceId: string
+  targetId: string
+  relationType: RelationType
+  /** Set when this edge was asserted by a memory, so it can be cited. */
+  memoryId?: string
   createdAt: number
 }
 
-/** A saved/favorited listing. Synced. */
-export interface Favorite extends Document {
-  _v?: number
-  listingId: string
-  listingName: string
-  city: string
-  image: string
-  pricePerNight: number
+/**
+ * Attachment metadata. Bytes live in `blobs`, addressed by SHA-256, so the same
+ * receipt photographed twice is stored once and a corrupt file is detectable.
+ */
+export interface Attachment extends Document {
+  /** SHA-256 of the bytes, hex. The blob's `_id` is derived from this. */
+  hash: string
+  filename: string
+  mimeType: string
+  size: number
+  kind: 'photo' | 'receipt' | 'document' | 'manual' | 'audio' | 'other'
+  memoryId?: string
+  entityId?: string
+  /** OCR or user caption — FTS-indexed, so a receipt's text is searchable. */
+  extractedText?: string
   createdAt: number
 }
 
-/** A guest review. Synced. */
-export interface Review extends Document {
-  _v?: number
-  listingId: string
-  author: string
-  rating: number
-  body: string
-  createdAt: number
+/** Content-addressed bytes, split out so attachment metadata reads stay cheap. */
+export interface Blob extends Document {
+  hash: string
+  bytes: Uint8Array
+  size: number
 }
 
-/** The listing categories, and the single source of truth for `Listing['type']`. */
-export const LISTING_TYPES = [
-  'Apartment', 'House', 'Villa', 'Cabin', 'Loft', 'Cottage', 'Studio', 'Bungalow',
-] as const
-
-export type ListingType = (typeof LISTING_TYPES)[number]
-
-export const CITIES = [
-  'Lisbon', 'Barcelona', 'Kyoto', 'Reykjavik', 'Cape Town', 'Queenstown',
-  'Marrakech', 'Bali', 'Amsterdam', 'Oaxaca', 'Tbilisi', 'Hoi An',
-  'Ljubljana', 'Cartagena', 'Chiang Mai', 'Porto',
-] as const
-
-export const AMENITIES = [
-  'Wifi', 'Pool', 'Kitchen', 'Air conditioning', 'Hot tub', 'Free parking',
-  'Washer', 'Pets allowed', 'Ocean view', 'Fireplace', 'Gym', 'EV charger',
-  'Workspace', 'Breakfast', 'Balcony', 'Beachfront',
-] as const
+/** One-time local setup markers. Never leaves the device. */
+export interface AppMeta extends Document {
+  key: string
+  version: number
+  value?: string
+}
