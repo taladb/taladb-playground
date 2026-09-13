@@ -1,152 +1,256 @@
 'use client'
 
-import { useDeferredValue, useState } from 'react'
-import {
-  DEFAULT_FILTERS,
-  activeFilterCount,
-  explainPipeline,
-  type ExploreFilters,
-  type SortKey,
-} from '@/lib/queries'
-import { useCatalogPage } from '@/lib/use-catalog'
-import { useSeedStatus } from '@/lib/seed'
-import { FilterPanel } from './components/FilterPanel'
-import { ListingCard } from './components/ListingCard'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useTalaDB, useCollection, useAggregate } from '@taladb/react'
+import { openLoans, warrantiesExpiring, recentMemoriesPipeline, stats } from '@/lib/queries'
+import { useAsync } from '@/lib/use-async'
+import { plural, relative, tint } from '@/lib/format'
+import { MemoryCard, MemoryThread } from './components/MemoryCard'
+import { MemorySkeleton, LoadingAnnounce } from './components/Skeleton'
+import { Icon, IconTile, type IconName } from './components/Icon'
+import type { Entity, Memory, MemoryRow } from '@/lib/types'
 
-export default function ExplorePage() {
-  const { docReady } = useSeedStatus()
-  const [filters, setFilters] = useState<ExploreFilters>(DEFAULT_FILTERS)
-  const [sort, setSort] = useState<SortKey>('recommended')
+/**
+ * Capture first, then what needs attention, then the record.
+ *
+ * The ordering is Health's: the thing you came to do, the things that want you,
+ * and then the history underneath. The two attention cards are pure
+ * document-engine work — a set difference for loans, a range scan for
+ * warranties — and they earn the top of the screen because they are the cases
+ * where an exact answer has consequences.
+ */
+export default function HomePage() {
+  const db = useTalaDB()
+  const router = useRouter()
+  const [draft, setDraft] = useState('')
 
-  // Defer the filter so fast typing/slider drags don't thrash the engine.
-  const deferred = useDeferredValue(filters)
-
-  // One page of documents, matched/sorted/paged inside TalaDB.
-  const { rows, total, loading, loadingMore, hasMore, loadMore, ms } = useCatalogPage(
-    deferred,
-    sort,
-    docReady,
+  const memories = useCollection<Memory>('memories')
+  const { data: recent, loading } = useAggregate<Memory, MemoryRow>(
+    memories,
+    recentMemoriesPipeline(6),
   )
-  const activeCount = activeFilterCount(deferred)
+
+  const loans = useAsync(() => openLoans(db), [db])
+  const warranties = useAsync(() => warrantiesExpiring(db, 60), [db])
+  const counts = useAsync(() => stats(db), [db])
+
+  function submitDraft(e: React.FormEvent) {
+    e.preventDefault()
+    const text = draft.trim()
+    if (text) router.push(`/capture?text=${encodeURIComponent(text)}`)
+  }
+
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-3xl bg-gradient-to-br from-indigo-600 to-blue-600 p-6 text-white shadow-sm sm:p-8">
-        <h1 className="text-2xl font-bold sm:text-3xl">Find your next stay</h1>
-        <p className="mt-1 max-w-2xl text-sm text-indigo-50">
-          Every listing, filter, and booking here lives in a database running{' '}
-          <strong>inside your browser</strong>. The catalog is seeded once, then never
-          downloaded again — each search below is matched, sorted and paged{' '}
-          <strong>inside TalaDB</strong>, with no server round-trip.
-        </p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/15 p-1.5 backdrop-blur">
-          <span className="pl-2 text-lg">🔎</span>
-          <input
-            value={filters.keyword}
-            onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
-            placeholder="Search descriptions — try “beach”, “quiet garden”, “fireplace”…"
-            className="w-full bg-transparent px-1 py-2 text-sm text-white placeholder:text-indigo-200 focus:outline-none"
-          />
-        </div>
+    <div className="space-y-8">
+      <header>
+        <p className="muted text-[15px] font-medium">{greeting}</p>
+        <h1 className="mt-0.5">Summary</h1>
+      </header>
+
+      {/* --- capture ------------------------------------------------------- */}
+      <section>
+        <form onSubmit={submitDraft}>
+          <label htmlFor="capture" className="sr-only">
+            What do you want to remember?
+          </label>
+          <div className="card overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 pt-4">
+              <IconTile name="sparkle" color="var(--color-ios-blue)" size="sm" />
+              <h2 className="text-[17px]">Remember Something</h2>
+            </div>
+            <textarea
+              id="capture"
+              name="memory"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitDraft(e)
+              }}
+              rows={2}
+              placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200…"
+              className="w-full resize-none bg-transparent px-4 pt-3 text-[17px] leading-relaxed outline-none"
+            />
+            <div className="flex items-center justify-between gap-3 px-4 pb-3.5 pt-1">
+              <p className="muted text-[13px]">The date, amount and thing get picked out for you.</p>
+              <button
+                type="submit"
+                disabled={!draft.trim()}
+                className="btn-primary shrink-0 px-4 py-2 text-[15px]"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </form>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <FilterPanel filters={filters} onChange={setFilters} />
-        </aside>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {!docReady ? (
-                'Loading catalog…'
-              ) : (
-                <>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {total.toLocaleString()}
-                  </span>{' '}
-                  stays{activeCount ? ` · ${activeCount} filter${activeCount > 1 ? 's' : ''}` : ''}
-                  {ms !== null && (
-                    <>
-                      {' · '}
-                      <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                        {ms} ms
-                      </span>{' '}
-                      on-device
-                    </>
-                  )}
-                </>
-              )}
-            </p>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <option value="recommended">Recommended</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-              <option value="rating">Top rated</option>
-            </select>
-          </div>
-
-          <QueryPreview text={explainPipeline(deferred, sort, 1)} total={total} shown={rows.length} />
-
-          {loading ? (
-            <GridSkeleton />
-          ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 dark:border-slate-700">
-              No stays match these filters. Try widening your search.
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                {rows.map((l) => (
-                  <ListingCard key={l.slug} listing={l} />
+      {/* --- attention ------------------------------------------------------ */}
+      {(!!loans.data?.length || !!warranties.data?.length) && (
+        <section className="space-y-2.5">
+          <h2 className="px-1">Needs Attention</h2>
+          <div className="grid gap-2.5 md:grid-cols-2">
+            {!!loans.data?.length && (
+              <SummaryCard
+                title="Still Lent Out"
+                icon="loan"
+                color="var(--color-ios-blue)"
+                count={loans.data.length}
+                hint="Loans with no later return recorded."
+              >
+                {loans.data.map((loan) => (
+                  <Row
+                    key={loan.memory._id}
+                    entity={loan.entity}
+                    meta={`${loan.borrower?.name ?? 'someone'} · ${plural(loan.daysOut, 'day')}`}
+                  />
                 ))}
+              </SummaryCard>
+            )}
+
+            {!!warranties.data?.length && (
+              <SummaryCard
+                title="Warranties Ending"
+                icon="warranty"
+                color="var(--color-ios-orange)"
+                count={warranties.data.length}
+                hint="Range scan over the warranty date index."
+              >
+                {warranties.data.map(({ entity, daysLeft }) => (
+                  <Row
+                    key={entity._id}
+                    entity={entity}
+                    meta={relative(entity.warrantyExpiresAt!)}
+                    urgent={daysLeft <= 30}
+                  />
+                ))}
+              </SummaryCard>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* --- on this device -------------------------------------------------- */}
+      {counts.data && (
+        <section className="space-y-2.5">
+          <h2 className="px-1">On This Device</h2>
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {(
+              [
+                ['Things', counts.data.entityCount, 'var(--color-ios-blue)', 'box'],
+                ['Memories', counts.data.memoryCount, 'var(--color-ios-green)', 'note'],
+                ['Links', counts.data.relationCount, 'var(--color-ios-indigo)', 'project'],
+                ['Embedded', counts.data.embedded, 'var(--color-ios-purple)', 'sparkle'],
+              ] as const
+            ).map(([label, value, color, icon]) => (
+              <div key={label} className="card p-3.5">
+                <IconTile name={icon as IconName} color={color} size="sm" />
+                <p className="tnum mt-2.5 text-[26px] font-bold leading-none tracking-tight" style={{ color }}>
+                  {value.toLocaleString()}
+                </p>
+                <p className="muted mt-1 text-[13px]">{label}</p>
               </div>
-              {hasMore && (
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="mx-auto mt-2 rounded-lg border border-slate-200 px-5 py-2 text-sm font-medium transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-900"
-                >
-                  {loadingMore
-                    ? 'Loading…'
-                    : `Show more (${(total - rows.length).toLocaleString()} left)`}
-                </button>
-              )}
-            </>
-          )}
+            ))}
+          </div>
+          <p className="muted px-1 text-[13px] leading-relaxed">
+            Seeded once on your first visit and stored in OPFS. Every page since has been read from
+            disk — no request has left this browser.{' '}
+            <Link href="/settings" style={{ color: 'var(--color-ios-blue)' }}>
+              Storage and export
+            </Link>
+          </p>
+        </section>
+      )}
+
+      {/* --- recent -------------------------------------------------------- */}
+      <section className="space-y-2.5">
+        <div className="flex items-baseline justify-between gap-4 px-1">
+          <h2>Recently Remembered</h2>
+          <Link href="/timeline" className="shrink-0 text-[15px]" style={{ color: 'var(--color-ios-blue)' }}>
+            See All
+          </Link>
         </div>
+
+        {loading ? (
+          <>
+            <LoadingAnnounce>Loading your memories…</LoadingAnnounce>
+            <MemorySkeleton rows={3} />
+          </>
+        ) : (
+          <MemoryThread>
+            {recent.map((memory, i) => (
+              <MemoryCard key={memory._id} memory={memory} index={i} />
+            ))}
+          </MemoryThread>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function SummaryCard({
+  title,
+  icon,
+  color,
+  count,
+  hint,
+  children,
+}: {
+  title: string
+  icon: IconName
+  color: string
+  count: number
+  hint: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="card flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 pb-2.5 pt-3.5">
+        <IconTile name={icon} color={color} size="sm" />
+        <h3 className="text-[15px] font-semibold" style={{ color }}>
+          {title}
+        </h3>
+        <span
+          className="tnum ml-auto rounded-full px-2 py-0.5 text-[13px] font-semibold"
+          style={{ background: tint(color, 14), color }}
+        >
+          {count}
+        </span>
       </div>
+      <ul className="flex-1">{children}</ul>
+      <p className="muted-more px-4 pb-3 pt-2 text-[11px]">{hint}</p>
     </div>
   )
 }
 
-function QueryPreview({ text, total, shown }: { text: string; total: number; shown: number }) {
+function Row({
+  entity,
+  meta,
+  urgent = false,
+}: {
+  entity: Entity | null
+  meta: string
+  urgent?: boolean
+}) {
   return (
-    <details className="group rounded-xl border border-slate-200 bg-slate-100/60 text-xs dark:border-slate-800 dark:bg-slate-900/60">
-      <summary className="cursor-pointer select-none px-3 py-2 font-medium text-slate-500 dark:text-slate-400">
-        The query TalaDB is running —{' '}
-        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-          {shown.toLocaleString()} document{shown === 1 ? '' : 's'} crossed into JS
-        </span>{' '}
-        (of {total.toLocaleString()} matched)
-      </summary>
-      <pre className="overflow-x-auto px-3 pb-3 font-mono text-[11px] leading-relaxed text-indigo-700 dark:text-indigo-300">
-        {text}
-      </pre>
-    </details>
-  )
-}
-
-function GridSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-      ))}
-    </div>
+    <li>
+      <Link href={`/entity/${entity?._id ?? ''}`} className="list-row list-row-flush">
+        <span aria-hidden className="text-lg">
+          {entity?.icon}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[15px]">{entity?.name ?? 'Unknown'}</span>
+        <span
+          className="shrink-0 text-[13px]"
+          style={urgent ? { color: 'var(--color-ios-red)', fontWeight: 600 } : { color: 'var(--color-label-2)' }}
+        >
+          {meta}
+        </span>
+        <Icon name="chevron" className="muted-more h-4 w-4 shrink-0" strokeWidth={2.5} />
+      </Link>
+    </li>
   )
 }

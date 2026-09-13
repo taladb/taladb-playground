@@ -1,37 +1,72 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Nav } from './components/Nav'
 import { Footer } from './components/Footer'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap' })
+/*
+ * The interface is meant to look native on Apple hardware, where the system
+ * font *is* SF — so the stack in `globals.css` reaches for `-apple-system`
+ * first and only falls through to Inter elsewhere. `next/font` self-hosts that
+ * fallback and emits a size-adjusted metric match, so there is no request to
+ * Google at runtime and no shift when the face swaps in.
+ */
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+/** Engine internals — index names, latencies, distance counts. */
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono-jb',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'Wanderdeck — a local-first booking demo on TalaDB 0.9',
+  title: 'Keepsake — a private memory for your real world',
   description:
-    'A full hotel-booking site that runs its database in your browser. Powered by TalaDB 0.9 — documents, full-text & vector search, aggregation, encryption, and offline-first sync.',
+    'A local-first personal memory system. Your things, people, places and everything that happened to them — searchable offline, on-device, in TalaDB.',
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fafaf9' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0a09' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Set the theme class before paint to avoid a flash. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
-          }}
-        />
-      </head>
-      <body className={`${inter.variable} ${mono.variable} min-h-screen antialiased`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrains.variable}`}
+    >
+      <body className="min-h-dvh">
+        {/* First tab stop on every page: skip the nav, land on the content. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50
+ focus:rounded-xl focus:bg-[var(--color-ios-blue)] focus:px-4 focus:py-2 focus:text-sm
+                     focus:font-semibold focus:text-white"
+        >
+          Skip to content
+        </a>
+
+        {/*
+          The provider opens the database in an effect, so nothing beneath it is
+          server-rendered. Correct for an app whose entire content is the user's
+          own private data — there is nothing here to index.
+        */}
         <Providers>
-          <div className="flex min-h-screen flex-col">
-            <Nav />
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-16 pt-6 sm:px-6">{children}</main>
-            <Footer />
-          </div>
+          <Nav />
+          <main id="main" className="mx-auto max-w-5xl px-5 pb-28 pt-8 md:px-6 md:pb-16">
+            {children}
+          </main>
+          <Footer />
         </Providers>
       </body>
     </html>

@@ -1,43 +1,28 @@
 'use client'
 
-import { TalaDBProvider, ReplicationProvider } from '@taladb/react'
-import { COLLECTION_OPTIONS, DB_NAME } from '@/lib/db-schema'
-import { getToken } from '@/lib/auth-token'
+import { TalaDBProvider } from '@taladb/react'
+import { COLLECTION_OPTIONS, DB_NAME } from '@/lib/schema'
 import { SeedGate } from '@/lib/seed'
 import { Splash } from './components/Splash'
 
 /**
- * `ReplicationProvider` replaces the old `SyncProvider` (`db.sync()` on a 10s
- * timer over the whole database). Same transport and same LWW merge — but the
- * slice, the cadence and the trigger are now declared per-component by
- * `useQuery`/`useMutation` instead of one global loop.
+ * One provider, no network.
  *
- * `prefetch` + `prefetchMode="once"` is the piece that matters for a local-first
- * feel: the user's slices are warmed in the background at browser-idle on first
- * run, and a returning device SKIPS the warm entirely — the data is already on
- * disk, so `useQuery` reads local and renders with no network in the path.
+ * This used to wrap a replication provider as well — a sync endpoint, an auth
+ * token and a poll interval. taladb 0.11.0 removed sync, replication and the
+ * conflict-resolution APIs outright, so there is nothing left to configure:
+ * the database on this device is the whole system, and the only server this app
+ * talks to is the one that served its JavaScript.
  *
- * The 10k-listing catalog is deliberately NOT here: it is local-only, seeded
- * once from a static asset, and never crosses the wire.
- *
- * `collections` registers each synced collection's schema ONCE, so every hook
- * below — including `useMutation` — writes through a *configured* handle: the
- * Zod schema hard-fails a bad local write and the engine stamps `_v`. (Before
- * taladb 0.9.3 the hooks resolved an unconfigured `db.collection(name)`, so this
- * app had to re-validate by hand in a `lib/mutations.ts` wrapper.)
+ * `collections` registers each collection's options once, so every hook beneath
+ * this point — `useFind`, `useAggregate`, `useWrite` — resolves a *configured*
+ * handle. Without it the hooks fall back to a bare `db.collection(name)` and a
+ * write silently skips both the Zod schema and the `_v` stamp.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <TalaDBProvider name={DB_NAME} fallback={<Splash />} collections={COLLECTION_OPTIONS}>
-      <ReplicationProvider
-        endpoint="/api/sync"
-        getAuth={() => ({ Authorization: `Bearer ${getToken()}` })}
-        pollMs={10_000}
-        prefetch={['bookings', 'favorites', 'reviews']}
-        prefetchMode="once"
-      >
-        <SeedGate>{children}</SeedGate>
-      </ReplicationProvider>
+      <SeedGate>{children}</SeedGate>
     </TalaDBProvider>
   )
 }

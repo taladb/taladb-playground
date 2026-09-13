@@ -1,34 +1,38 @@
 {
-  "name": "taladb-playground",
+  "name": "keepsake",
   "private": true,
-  "version": "0.9.2",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "dev:webpack": "next dev --webpack",
     "build": "next build",
-    "build:webpack": "next build --webpack",
     "start": "next start",
-    "seed": "tsx scripts/generate-seed.ts"
+    "typecheck": "tsc --noEmit",
+    "seed": "bun scripts/generate-seed.ts",
+    "verify": "bun scripts/verify.ts"
   },
   "dependencies": {
-    "@taladb/next": "^0.9.3",
-    "@taladb/react": "^0.9.3",
-    "@taladb/web": "^0.9.3",
+    "@taladb/react": "^0.11.5",
+    "@taladb/web": "^0.11.5",
     "next": "^16.2.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "taladb": "^0.9.3",
+    "taladb": "^0.11.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@tailwindcss/postcss": "^4.2.2",
+    "@taladb/node": "0.11.5",
+    "@types/bun": "^1.2.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.2.2",
-    "tsx": "^4.19.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "trustedDependencies": [
+    "onnxruntime-node",
+    "protobufjs"
+  ]
 }

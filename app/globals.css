@@ -2,9 +2,85 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/*
+ * Keepsake's design language: iOS, specifically the Health app.
+ *
+ * Three things carry that look, and all three are doing real work here:
+ *
+ *   1. Every category owns a colour. Health gives Activity red, Sleep teal,
+ *      Nutrition green — so a glance at a mixed list sorts itself before you
+ *      read a word. Keepsake has fifteen memory types and six entity types,
+ *      which is exactly the case that needs it.
+ *   2. Grouped cards on a recessed ground, not bordered boxes on white. The
+ *      separation comes from the surface behind them, so borders can go away.
+ *   3. Tight, heavy system type. Large titles at the top of a screen, semibold
+ *      labels, and secondary text in a true grey rather than a tinted one.
+ *
+ * The engine colours stay reserved: sky for the document engine's exact
+ * answers, violet for vector similarity, emerald for a graph walk. They are the
+ * one part of the palette that means something specific, so no category is
+ * allowed to borrow them.
+ */
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* SF first — on Apple hardware this *is* the system font. Inter is the
+     cross-platform stand-in, and is close enough that the rhythm survives. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter),
+    ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter),
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, monospace;
+
+  /* iOS system colours (light). */
+  --color-ios-red: #ff3b30;
+  --color-ios-orange: #ff9500;
+  --color-ios-yellow: #ffcc00;
+  --color-ios-green: #34c759;
+  --color-ios-mint: #00c7be;
+  --color-ios-teal: #30b0c7;
+  --color-ios-cyan: #32ade6;
+  --color-ios-blue: #007aff;
+  --color-ios-indigo: #5856d6;
+  --color-ios-purple: #af52de;
+  --color-ios-pink: #ff2d55;
+  --color-ios-brown: #a2845e;
+  --color-ios-gray: #8e8e93;
+
+  /* Surfaces. `group` is the recessed ground; `card` sits on top of it. */
+  --color-group: #f2f2f7;
+  --color-card: #ffffff;
+  --color-separator: #3c3c4349;
+
+  --color-label-2: #3c3c4399;
+  --color-label-3: #3c3c434d;
+
+  --radius-card: 16px;
+}
+
+/* Dark mode flips the stack: the ground goes true black and cards lift to
+   near-black, which is how iOS does it on OLED. The accent colours brighten,
+   because the light-mode values are too dense to read on black. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-group: #000000;
+    --color-card: #1c1c1e;
+    --color-separator: #54545899;
+    --color-label-2: #ebebf599;
+    --color-label-3: #ebebf54d;
+
+    --color-ios-red: #ff453a;
+    --color-ios-orange: #ff9f0a;
+    --color-ios-yellow: #ffd60a;
+    --color-ios-green: #30d158;
+    --color-ios-mint: #63e6e2;
+    --color-ios-teal: #40c8e0;
+    --color-ios-cyan: #64d2ff;
+    --color-ios-blue: #0a84ff;
+    --color-ios-indigo: #5e5ce6;
+    --color-ios-purple: #bf5af2;
+    --color-ios-pink: #ff375f;
+    --color-ios-brown: #ac8e68;
+    --color-ios-gray: #98989d;
+  }
 }
 
 @layer base {
@@ -12,25 +88,165 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-  }
-
-  * {
-    @apply border-slate-200 dark:border-slate-800;
+    color-scheme: light dark;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+    background: var(--color-group);
+    @apply text-black dark:text-white;
+  }
+
+  /* Large titles are the iOS navigation signature: 34pt, bold, tight. */
+  h1 {
+    font-family: var(--font-display);
+    @apply text-[34px] font-bold leading-[1.1] tracking-[-0.022em];
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    @apply text-[22px] font-bold tracking-[-0.018em];
+    text-wrap: balance;
+  }
+
+  h3 {
+    @apply font-semibold tracking-[-0.01em];
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   ::selection {
-    @apply bg-indigo-500/25;
+    background: color-mix(in oklab, var(--color-ios-blue) 25%, transparent);
   }
 
-  /* Consistent form-control styling so inputs read clearly in both themes. */
-  input,
-  textarea,
+  input, textarea, select {
+    @apply text-black dark:text-white;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-label-3);
+  }
+
   select {
-    @apply text-slate-900 placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500;
+    background-color: var(--color-card);
+    @apply text-black dark:text-white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ios-blue);
+    outline-offset: 2px;
+    border-radius: 10px;
+  }
+
+  a, button, [role="button"], summary, input, select, textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /*
+   * Each written out in full: Tailwind v4's `@apply` resolves utilities only
+   * and cannot apply a custom class from the same layer, so composing these
+   * from one another fails the build.
+   */
+
+  /** A grouped card floating on the recessed ground. */
+  .card {
+    background: var(--color-card);
+    border-radius: var(--radius-card);
+  }
+
+  .list-row {
+    @apply flex w-full items-center gap-3 px-4 py-3 text-left;
+    transition: background-color 120ms;
+  }
+
+  .list-row:active {
+    background: color-mix(in oklab, var(--color-ios-gray) 18%, transparent);
+  }
+
+  /* The hairline divider, inset to clear the leading icon. */
+  .list-row + .list-row {
+    box-shadow: inset 0 0.5px 0 var(--color-separator);
+  }
+
+  .list-row-flush + .list-row-flush {
+    box-shadow: inset 0 0.5px 0 var(--color-separator);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-[17px]
+           font-semibold text-white disabled:opacity-40;
+    background: var(--color-ios-blue);
+    transition: transform 120ms, opacity 120ms;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-[17px]
+           font-medium disabled:opacity-40;
+    background: var(--color-card);
+    color: var(--color-ios-blue);
+    transition: transform 120ms, opacity 120ms;
+  }
+
+  .btn-ghost:active:not(:disabled) {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
+
+  /** iOS search field: pill, filled, no border. */
+  .field {
+    @apply w-full rounded-[12px] px-4 py-3 text-[17px];
+    background: var(--color-card);
+    border: 1px solid transparent;
+    transition: border-color 150ms;
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--color-ios-blue);
+  }
+
+  /** Segmented control — the iOS filter primitive. */
+  .segmented {
+    @apply inline-flex gap-0.5 rounded-[10px] p-0.5;
+    background: color-mix(in oklab, var(--color-ios-gray) 20%, transparent);
+  }
+
+  .segment {
+    @apply rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium;
+    color: var(--color-label-2);
+    transition: background-color 150ms, color 150ms;
+  }
+
+  .segment[aria-pressed="true"] {
+    background: var(--color-card);
+    @apply font-semibold text-black shadow-sm dark:text-white;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /** Secondary text, in iOS's true grey rather than a tinted one. */
+  .muted {
+    color: var(--color-label-2);
+  }
+
+  .muted-more {
+    color: var(--color-label-3);
   }
 }
 
@@ -38,12 +254,77 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The vertical thread a timeline hangs from. */
+  .rail {
+    @apply absolute left-[19px] top-2 bottom-2 w-[2px] rounded-full;
+    background: color-mix(in oklab, var(--color-ios-gray) 25%, transparent);
+  }
 }
+
+/* --- motion -------------------------------------------------------------- */
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
 .spinner {
-  @apply rounded-full border-2 border-slate-200 dark:border-slate-700 animate-spin;
-  border-top-color: var(--color-indigo-500);
+  @apply rounded-full border-2;
+  border-color: color-mix(in oklab, var(--color-ios-gray) 30%, transparent);
+  border-top-color: currentColor;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Entrance for list items. `--i` staggers them; set it inline per row. */
+.rise {
+  animation: rise 340ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+.skeleton {
+  @apply relative overflow-hidden rounded-[12px];
+  background: color-mix(in oklab, var(--color-ios-gray) 18%, transparent);
+}
+
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0 -translate-x-full;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, white 30%, transparent), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+/*
+ * One rule, every animation. Someone who asks their OS to stop moving things
+ * means it, and a "subtle" entrance is still motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .rise {
+    animation: none;
+  }
 }
