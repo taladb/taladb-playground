@@ -12,18 +12,18 @@
     "verify": "bun scripts/verify.ts"
   },
   "dependencies": {
-    "@taladb/react": "^0.11.4",
-    "@taladb/web": "^0.11.4",
+    "@taladb/react": "^0.11.5",
+    "@taladb/web": "^0.11.5",
     "next": "^16.2.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "taladb": "^0.11.4",
+    "taladb": "^0.11.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.8.1",
     "@tailwindcss/postcss": "^4.2.2",
-    "@taladb/node": "0.11.4",
+    "@taladb/node": "0.11.5",
     "@types/bun": "^1.2.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

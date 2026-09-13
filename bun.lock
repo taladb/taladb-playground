@@ -5,18 +5,18 @@
     "": {
       "name": "keepsake",
       "dependencies": {
-        "@taladb/react": "^0.11.4",
-        "@taladb/web": "^0.11.4",
+        "@taladb/react": "^0.11.5",
+        "@taladb/web": "^0.11.5",
         "next": "^16.2.10",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "taladb": "^0.11.4",
+        "taladb": "^0.11.5",
         "zod": "^4.4.3",
       },
       "devDependencies": {
         "@huggingface/transformers": "^3.8.1",
         "@tailwindcss/postcss": "^4.2.2",
-        "@taladb/node": "0.11.4",
+        "@taladb/node": "0.11.5",
         "@types/bun": "^1.2.0",
         "@types/node": "^22.0.0",
         "@types/react": "^19.0.0",
@@ -173,11 +173,11 @@
 
     "@tailwindcss/postcss": ["@tailwindcss/postcss@4.3.3", "", { "dependencies": { "@alloc/quick-lru": "^5.2.0", "@tailwindcss/node": "4.3.3", "@tailwindcss/oxide": "4.3.3", "postcss": "^8.5.16", "tailwindcss": "4.3.3" } }, "sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg=="],
 
-    "@taladb/node": ["@taladb/node@0.11.4", "", {}, "sha512-BbNckncfJvgQlHa7XHmGwp1kVWbu65Vql5juwL9AIbFAAvhY05CgZqy/E9WfRa1eJ2F6Ara2XabZ/6nJ3jA+AQ=="],
+    "@taladb/node": ["@taladb/node@0.11.5", "", {}, "sha512-7i3aZ+aD95pNWB3cdb5BDUkwv0MjuiAENhNcjl8jjF+B7ec3CmRSUxGCQ7QqMU6M5jS2DILWuDRiA5RxfREBiw=="],
 
-    "@taladb/react": ["@taladb/react@0.11.4", "", { "peerDependencies": { "react": ">=18.0.0", "taladb": "^0.11.4" } }, "sha512-7qEeEH4AXW92oGwk7EqVORF605snZLwn8Y5P7STRROkTpB70SRY9xN3q081cJn3XvIPStQb+vhCTJ2v7oQw48A=="],
+    "@taladb/react": ["@taladb/react@0.11.5", "", { "peerDependencies": { "react": ">=18.0.0", "taladb": "^0.11.5" } }, "sha512-mD5HWUZVSYdDOlD9V67++lIrTA/7wmYr/Ju8tY57j/QizCIlJnY1jZu1bsmHXOGJ+PS8dHRMTh/6h/Vg8Pe8Rw=="],
 
-    "@taladb/web": ["@taladb/web@0.11.4", "", {}, "sha512-39RxxMnkZVeCGSX3+jIv0fbXhPI5Z5k3rog8rDkzp6snoFfcz512r76/fAJwd6ZLg2foJ5PCLGpwaWvdsv3JIA=="],
+    "@taladb/web": ["@taladb/web@0.11.5", "", {}, "sha512-dmlufiignaB4OQeCHSSbq+zHsHTmTwfdUwKAO7ZQO4bQEsJE9fR9v0GTxcOv9ew1rLMAusYzx7meVSNBo0Cb2w=="],
 
     "@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
 
@@ -319,7 +319,7 @@
 
     "tailwindcss": ["tailwindcss@4.3.3", "", {}, "sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ=="],
 
-    "taladb": ["taladb@0.11.4", "", { "dependencies": { "js-yaml": "^4.1.0" }, "peerDependencies": { "@taladb/node": "0.11.4", "@taladb/web": "0.11.4" }, "optionalPeers": ["@taladb/node", "@taladb/web"] }, "sha512-d6IzkgjqMNZpn9WP1grebcbcbgrcwtfvSR1rkUtHizmIRAVTQH8yaepHKZgE1KanmquzA2IFY9Zk6TOVzR1e+Q=="],
+    "taladb": ["taladb@0.11.5", "", { "dependencies": { "js-yaml": "^4.1.0" }, "peerDependencies": { "@taladb/node": "0.11.5", "@taladb/web": "0.11.5" }, "optionalPeers": ["@taladb/node", "@taladb/web"] }, "sha512-ySap0Tnuhufm7hXICSSG9nNhFfNizaz/AytUzl/ZpEvcwJJy8//2Q+XfGrTI2xEgWg4OjxYJzjjtj58QOOfXlA=="],
 
     "tapable": ["tapable@2.3.3", "", {}, "sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A=="],
 
