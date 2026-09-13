@@ -241,7 +241,7 @@ export function SeedGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-6">
         <div className="max-w-md rounded-2xl border border-rose-300 bg-rose-50 p-6 dark:border-rose-900 dark:bg-rose-950/40">
-          <h2 className="font-semibold text-rose-900 dark:text-rose-200">Could not set up your memory</h2>
+          <h2 className="font-serif text-lg font-semibold text-rose-900 dark:text-rose-200">Could not set up your memory</h2>
           <p className="mt-2 text-sm text-rose-800 dark:text-rose-300">{error}</p>
         </div>
       </div>
@@ -251,17 +251,40 @@ export function SeedGate({ children }: { children: React.ReactNode }) {
   if (!ready) {
     const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : null
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 p-6">
-        <div className="text-4xl">🧠</div>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6">
+        <svg viewBox="0 0 32 32" className="h-12 w-12" aria-hidden>
+          <rect width="32" height="32" rx="8" className="fill-amber-400" />
+          <path
+            d="M8 23 Q12 9 16 16 Q20 23 24 9"
+            className="stroke-stone-900"
+            strokeWidth="2.25"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <circle cx="8" cy="23" r="2.4" className="fill-stone-900" />
+          <circle cx="16" cy="16" r="2.4" className="fill-stone-900" />
+          <circle cx="24" cy="9" r="2.4" className="fill-stone-900" />
+        </svg>
+
         <div className="text-center">
-          <p className="font-medium">{PHASE_LABEL[progress.phase]}</p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p role="status" aria-live="polite" className="font-serif text-lg font-medium">
+            {PHASE_LABEL[progress.phase]}
+          </p>
+          <p className="mt-1.5 text-sm text-stone-500 dark:text-stone-400">
             Setting up once on this device. Nothing leaves it.
           </p>
         </div>
-        <div className="h-1.5 w-64 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+
+        <div
+          className="h-1.5 w-64 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800"
+          role="progressbar"
+          aria-valuenow={pct ?? undefined}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Setup progress"
+        >
           <div
-            className="h-full rounded-full bg-indigo-500 transition-all duration-300"
+            className="h-full rounded-full bg-amber-500 transition-[width] duration-300"
             style={{ width: pct === null ? '25%' : `${pct}%` }}
           />
         </div>

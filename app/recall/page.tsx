@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useTalaDB } from '@taladb/react'
 import { recall, type RecallResult } from '@/lib/retrieval'
+import { useDesktopFocus } from '@/lib/use-desktop-focus'
 import {
   getEmbedderState, loadEmbedder, subscribeEmbedder, type EmbedderState,
 } from '@/lib/embed'
-import { MemoryCard } from '../components/MemoryCard'
+import { MemoryCard, MemoryThread } from '../components/MemoryCard'
 import { EngineBadge, RankMarks } from '../components/EngineBadge'
 
 /**
@@ -47,6 +48,7 @@ export default function RecallPage() {
   const [result, setResult] = useState<RecallResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const inputRef = useDesktopFocus<HTMLInputElement>()
 
   const run = useCallback(
     async (text: string) => {
@@ -79,7 +81,7 @@ export default function RecallPage() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+        <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">
           What do I already know about this?
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-stone-400">
@@ -94,12 +96,20 @@ export default function RecallPage() {
           }}
           className="mt-5 flex gap-2"
         >
+          <label htmlFor="recall-query" className="sr-only">
+            Ask a question about your history
+          </label>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="When did I last replace the bicycle chain?"
+            ref={inputRef}
+            id="recall-query"
+            name="q"
+            type="search"
+            autoComplete="off"
+            spellCheck={false}
             className="field text-base"
-            autoFocus
           />
           <button type="submit" disabled={busy || !query.trim()} className="btn-primary shrink-0">
             {busy ? <span className="spinner h-4 w-4" /> : 'Ask'}
@@ -165,7 +175,7 @@ function SemanticTier({ state, onEnable }: { state: EmbedderState; onEnable: () 
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800">
           <div
-            className="h-full rounded-full bg-violet-500 transition-all"
+            className="h-full rounded-full bg-violet-500 transition-[width] duration-300"
             style={{ width: `${state.progress}%` }}
           />
         </div>
@@ -201,33 +211,35 @@ function SemanticTier({ state, onEnable }: { state: EmbedderState; onEnable: () 
 
 function Results({ result }: { result: RecallResult }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {result.answer && (
-        <section className="card overflow-hidden">
-          <div className="border-b bg-stone-50 px-5 py-2.5 dark:bg-stone-900">
-            <div className="flex flex-wrap items-center gap-2">
-              <EngineBadge engine={result.answer.engine} />
-              <span className="text-xs text-stone-500 dark:text-stone-400">
-                {result.answer.method}
-              </span>
-            </div>
+        <section className="card-raised overflow-hidden">
+          {/* Provenance sits above the answer, not under it. Who computed this
+              is part of reading it, not a footnote. */}
+          <div className="flex flex-wrap items-center gap-2.5 border-b bg-stone-50/80 px-5 py-3 dark:bg-stone-900/60">
+            <EngineBadge engine={result.answer.engine} />
+            <span className="text-xs leading-snug text-stone-500 dark:text-stone-400">
+              {result.answer.method}
+            </span>
           </div>
 
-          <div className="px-5 py-5">
-            <p className="text-2xl font-semibold tracking-tight">{result.answer.headline}</p>
-            <div className="mt-2 space-y-1.5">
+          <div className="px-5 py-6 md:px-6">
+            <p className="font-serif text-3xl font-semibold leading-tight tracking-tight md:text-4xl">
+              {result.answer.headline}
+            </p>
+            <div className="mt-3 space-y-2">
               {result.answer.lines.map((line, i) => (
-                <p key={i} className="text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+                <p
+                  key={i}
+                  className="max-w-2xl text-[15px] leading-relaxed text-stone-600 dark:text-stone-300"
+                >
                   {line}
                 </p>
               ))}
             </div>
 
             {result.answer.entity && (
-              <Link
-                href={`/entity/${result.answer.entity._id}`}
-                className="btn-ghost mt-4 text-sm"
-              >
+              <Link href={`/entity/${result.answer.entity._id}`} className="btn-ghost mt-5">
                 <span aria-hidden>{result.answer.entity.icon}</span>
                 Open {result.answer.entity.name}
               </Link>
@@ -237,10 +249,8 @@ function Results({ result }: { result: RecallResult }) {
       )}
 
       <section>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold">
-            {result.answer ? 'Evidence' : 'Closest memories'}
-          </h2>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="eyebrow">{result.answer ? 'Evidence' : 'Closest Memories'}</h2>
           <p className="text-xs text-stone-500 dark:text-stone-400">
             {result.semanticUsed
               ? 'Keyword and vector rankings, fused'
@@ -249,20 +259,26 @@ function Results({ result }: { result: RecallResult }) {
         </div>
 
         {result.evidence.length === 0 ? (
-          <p className="card mt-3 p-5 text-sm text-stone-500 dark:text-stone-400">
-            Nothing matched. Every word here is searched against memories you wrote — there is no
-            corpus behind this beyond your own.
-          </p>
+          <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <span className="text-3xl" aria-hidden>
+              🔍
+            </span>
+            <p className="font-serif text-lg font-medium">Nothing matched</p>
+            <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+              Every word here is searched against memories you wrote. There is no corpus behind
+              this beyond your own.
+            </p>
+          </div>
         ) : (
-          <div className="mt-3 space-y-3">
-            {result.evidence.map((item) => (
-              <MemoryCard key={item.memory._id} memory={item.memory}>
-                <div className="mt-2 border-t pt-2">
+          <MemoryThread>
+            {result.evidence.map((item, i) => (
+              <MemoryCard key={item.memory._id} memory={item.memory} index={i}>
+                <div className="mt-2.5 border-t pt-2.5">
                   <RankMarks textRank={item.textRank} vectorRank={item.vectorRank} />
                 </div>
               </MemoryCard>
             ))}
-          </div>
+          </MemoryThread>
         )}
       </section>
 
@@ -271,14 +287,6 @@ function Results({ result }: { result: RecallResult }) {
   )
 }
 
-/**
- * The retrieval inspector.
- *
- * Reports what actually ran rather than a diagram of what could have. The
- * execution record comes from the engine itself — which path it chose, why, the
- * effective `efSearch`, and the number of distance computations it performed to
- * produce the ranking above.
- */
 function Inspector({ result }: { result: RecallResult }) {
   const stages: Array<[string, string, boolean]> = [
     ['Classify', `intent: ${result.intent}`, true],

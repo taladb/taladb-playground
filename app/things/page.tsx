@@ -57,11 +57,19 @@ export default function ThingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Your things</h1>
+        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Your Things</h1>
         <EngineBadge engine={result.data?.searched ? 'keyword' : 'structured'} size="xs" />
       </div>
 
+      <label htmlFor="thing-search" className="sr-only">
+        Search your things
+      </label>
       <input
+        id="thing-search"
+        name="q"
+        type="search"
+        autoComplete="off"
+        spellCheck={false}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search by name, model, serial number or what it is…"
@@ -121,13 +129,19 @@ export default function ThingsPage() {
       </p>
 
       {entities.length === 0 && !result.loading ? (
-        <p className="card p-6 text-sm text-stone-500 dark:text-stone-400">
-          Nothing here yet.
-        </p>
+        <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <span className="text-3xl" aria-hidden>
+            📦
+          </span>
+          <p className="font-serif text-lg font-medium">Nothing matched</p>
+          <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+            Try a different search, or another type of thing.
+          </p>
+        </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {entities.map((entity) => (
-            <EntityCard key={entity._id} entity={entity} />
+          {entities.map((entity, i) => (
+            <EntityCard key={entity._id} entity={entity} index={i} />
           ))}
         </div>
       )}

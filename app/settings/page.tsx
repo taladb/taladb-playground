@@ -30,7 +30,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Settings</h1>
+      <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Settings</h1>
 
       <SemanticPanel db={db} embedded={counts.data?.embedded ?? 0} total={counts.data?.memoryCount ?? 0} />
       <VectorPanel db={db} />
@@ -452,6 +452,7 @@ function DataPanel({ db }: { db: TalaDB }) {
         <input
           ref={fileInput}
           type="file"
+          aria-label="Choose a memory pack to import"
           accept="application/json,.json"
           className="hidden"
           onChange={(e) => {

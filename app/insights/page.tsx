@@ -60,7 +60,7 @@ export default function InsightsPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Insights</h1>
+        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Insights</h1>
         <EngineBadge engine="structured" />
       </div>
 
@@ -84,16 +84,16 @@ export default function InsightsPage() {
         <p className="text-xs text-stone-500 dark:text-stone-400">
           Total recorded spend {year === 'all' ? 'all time' : `in ${year}`}
         </p>
-        <p className="tnum mt-1 text-3xl font-semibold">{money(total)}</p>
+        <p className="tnum mt-1.5 font-serif text-4xl font-semibold leading-none">{money(total)}</p>
         <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
           Across {plural(byEntity.data?.length ?? 0, 'thing')} with an amount recorded.
         </p>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold tracking-tight">Where it went</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Where It Went</h2>
         <div className="card mt-3 divide-y p-0">
-          {byEntity.loading && <div className="h-32 animate-pulse bg-stone-100 dark:bg-stone-900" />}
+          {byEntity.loading && <div className="skeleton h-32 rounded-none" />}
           {byEntity.data?.slice(0, 12).map((row) => (
             <Link
               key={row._id}
@@ -134,7 +134,7 @@ export default function InsightsPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold tracking-tight">By kind of event</h2>
+        <h2 className="text-xl font-semibold tracking-tight">By Kind of Event</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {byType.data?.map((row) => (
             <div key={row._id} className="card flex items-center justify-between gap-3 p-3">
@@ -149,7 +149,7 @@ export default function InsightsPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold tracking-tight">Warranties</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Warranties</h2>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <div className="card p-4">
             <h3 className="text-sm font-semibold">Still covered</h3>

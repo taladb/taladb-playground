@@ -9,7 +9,8 @@ import {
 import { contentsOf, locateEntity, relatedEntities, relationLabel } from '@/lib/graph'
 import { useAsync } from '@/lib/use-async'
 import { ENTITY_LABEL, fullDate, money, plural, relative, yearOf } from '@/lib/format'
-import { MemoryCard } from '@/app/components/MemoryCard'
+import { MemoryCard, MemoryThread } from '@/app/components/MemoryCard'
+import { MemorySkeleton, CardSkeleton, LoadingAnnounce } from '@/app/components/Skeleton'
 import { EngineBadge } from '@/app/components/EngineBadge'
 import type { Memory, MemoryRow } from '@/lib/types'
 
@@ -39,7 +40,17 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
   )
 
   if (entity.loading) {
-    return <div className="card h-40 animate-pulse bg-stone-100 dark:bg-stone-900" />
+    return (
+      <div className="space-y-6">
+        <LoadingAnnounce>Loading…</LoadingAnnounce>
+        <CardSkeleton className="h-24" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <CardSkeleton className="h-24" />
+          <CardSkeleton className="h-24" />
+          <CardSkeleton className="h-24" />
+        </div>
+      </div>
+    )
   }
 
   if (!entity.data) {
@@ -63,7 +74,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
           {e.icon}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{e.name}</h1>
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">{e.name}</h1>
           <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
             {e.category || ENTITY_LABEL[e.entityType]}
             {e.manufacturer && ` · ${e.manufacturer}`}
@@ -174,14 +185,25 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
 /** Chronological history, grouped by year so a long life stays readable. */
 function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boolean }) {
   if (loading) {
-    return <div className="card h-32 animate-pulse bg-stone-100 dark:bg-stone-900" />
+    return (
+      <>
+        <LoadingAnnounce>Loading this history…</LoadingAnnounce>
+        <MemorySkeleton rows={3} />
+      </>
+    )
   }
 
   if (!memories.length) {
     return (
-      <p className="card p-6 text-sm text-stone-500 dark:text-stone-400">
-        Nothing has happened to this yet.
-      </p>
+      <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
+        <span className="text-3xl" aria-hidden>
+          🕰️
+        </span>
+        <p className="font-serif text-lg font-medium">Nothing has happened to this yet</p>
+        <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+          Record something and it will appear here, newest first.
+        </p>
+      </div>
     )
   }
 
@@ -194,17 +216,17 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {[...byYear.entries()].map(([year, rows]) => (
         <section key={year}>
-          <h2 className="tnum sticky top-14 z-10 -mx-1 bg-stone-50/90 px-1 py-1 text-sm font-semibold text-stone-400 backdrop-blur dark:bg-stone-950/90 dark:text-stone-500">
+          <h2 className="tnum sticky top-14 z-20 -mx-1 mb-3 w-fit rounded-lg bg-stone-50/85 px-2 py-1 font-serif text-sm font-semibold text-stone-400 backdrop-blur-sm dark:bg-stone-950/85 dark:text-stone-500">
             {year}
           </h2>
-          <div className="mt-2 space-y-3">
-            {rows.map((memory) => (
-              <MemoryCard key={memory._id} memory={memory} showEntities={false} />
+          <MemoryThread>
+            {rows.map((memory, i) => (
+              <MemoryCard key={memory._id} memory={memory} showEntities={false} index={i} />
             ))}
-          </div>
+          </MemoryThread>
         </section>
       ))}
     </div>
@@ -277,7 +299,7 @@ function Connections({ entityId }: { entityId: string }) {
   const inside = contents.data ?? []
 
   if (related.loading) {
-    return <div className="card h-24 animate-pulse bg-stone-100 dark:bg-stone-900" />
+    return <CardSkeleton className="h-24" />
   }
 
   if (!groups.length && !inside.length) {

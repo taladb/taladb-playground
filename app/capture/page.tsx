@@ -105,20 +105,25 @@ function Capture() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Remember something</h1>
+        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Remember Something</h1>
         <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-stone-400">
           Write it the way you would say it out loud.
         </p>
       </div>
 
       <div className="card p-4">
+        <label htmlFor="capture-text" className="sr-only">
+          What do you want to remember?
+        </label>
         <textarea
+          id="capture-text"
+          name="memory"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={4}
-          placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200."
-          className="w-full resize-none bg-transparent text-base leading-relaxed outline-none"
-          autoFocus
+          placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200…"
+          className="w-full resize-none bg-transparent font-serif text-[17px] leading-relaxed outline-none
+                     placeholder:font-sans placeholder:text-[15px]"
         />
         <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
           <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -150,8 +155,10 @@ function Capture() {
           </header>
 
           <div className="divide-y">
-            <Row label="Kind" reason={proposal.memoryType.reason} confidence={proposal.memoryType.confidence}>
+            <Row label="Kind" htmlFor="m-kind" reason={proposal.memoryType.reason} confidence={proposal.memoryType.confidence}>
               <select
+                id="m-kind"
+                name="memoryType"
                 value={type}
                 onChange={(e) => setType(e.target.value as MemoryType)}
                 className="field"
@@ -164,12 +171,20 @@ function Capture() {
               </select>
             </Row>
 
-            <Row label="Title">
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className="field" />
+            <Row label="Title" htmlFor="m-title">
+              <input
+                id="m-title"
+                name="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="field"
+              />
             </Row>
 
-            <Row label="When" reason={proposal.occurredAt.reason} confidence={proposal.occurredAt.confidence}>
+            <Row label="When" htmlFor="m-date" reason={proposal.occurredAt.reason} confidence={proposal.occurredAt.confidence}>
               <input
+                id="m-date"
+                name="occurredAt"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -201,13 +216,17 @@ function Capture() {
 
             <Row
               label="Amount"
+              htmlFor="m-amount"
               reason={proposal.amount?.reason ?? 'no amount found in the text'}
               confidence={proposal.amount?.confidence}
             >
               <input
+                id="m-amount"
+                name="amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
+                autoComplete="off"
                 placeholder="—"
                 className="field tnum"
               />
@@ -244,11 +263,15 @@ function Capture() {
 
 function Row({
   label,
+  htmlFor,
   reason,
   confidence,
   children,
 }: {
   label: string
+  /** Binds the visible label to its control. Without it these read as
+   *  free-floating text and the control is announced unlabelled. */
+  htmlFor?: string
   reason?: string
   confidence?: number
   children: React.ReactNode
@@ -256,7 +279,13 @@ function Row({
   return (
     <div className="grid gap-2 px-5 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4">
       <div>
-        <p className="text-sm font-medium">{label}</p>
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="text-sm font-medium">
+            {label}
+          </label>
+        ) : (
+          <p className="text-sm font-medium">{label}</p>
+        )}
         {reason && (
           <p className="mt-0.5 text-[11px] leading-snug text-stone-500 dark:text-stone-400">
             {confidence !== undefined && (

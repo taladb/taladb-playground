@@ -3,26 +3,42 @@
 @variant dark (&:where(.dark, .dark *));
 
 /*
- * A warm, archival palette rather than the usual cool product blue — this is a
- * place where personal history accumulates, and paper is the right metaphor.
+ * Keepsake's design language: a well-kept archive.
  *
- * The one part of the palette doing real work is the engine colours. Every
- * result in the app is attributed to whichever engine produced it, and the same
- * three hues mean the same three things everywhere: sky for the document
- * engine's exact answers, violet for vector similarity, emerald for a graph
- * walk. Hybrid results carry both sky and violet, because that is precisely
- * what they are.
+ * The product is a record of someone's life, so the surface is warm paper
+ * rather than the usual cool product blue, and the voice is editorial — a
+ * serif for the things a person wrote, a sans for the chrome around it. The
+ * distinction is load-bearing: a memory's title is *content*, a button label
+ * is *interface*, and the two should not look alike.
+ *
+ * The one part of the palette doing semantic work is the engine colours. Every
+ * result is attributed to whichever engine produced it, and the same three hues
+ * mean the same three things everywhere: sky for the document engine's exact
+ * answers, violet for vector similarity, emerald for a graph walk. Hybrid
+ * results carry sky and violet together, because that is what they are.
  */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+  /* Loaded by next/font in layout.tsx — these names are the CSS variables it
+     exposes, not bare family names, so the font actually arrives. The previous
+     version named "Inter" and never loaded it, and quietly rendered in system
+     fallbacks everywhere. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, monospace;
 
-  --color-paper: oklch(0.986 0.006 85);
-  --color-paper-dark: oklch(0.17 0.008 75);
+  /* Warm neutrals. Named by role so a change here is a change everywhere. */
+  --color-ink: oklch(0.24 0.012 65);
+  --color-ink-soft: oklch(0.48 0.012 65);
+  --color-ink-faint: oklch(0.63 0.010 65);
 
   --color-engine-doc: var(--color-sky-600);
   --color-engine-vector: var(--color-violet-600);
   --color-engine-graph: var(--color-emerald-600);
+
+  /* Warm, low-contrast shadows. A neutral-grey shadow over a warm ground reads
+     as dirt; tinting it toward the paper keeps the lift without the smudge. */
+  --shadow-card: 0 1px 2px oklch(0.35 0.03 65 / 0.06), 0 1px 1px oklch(0.35 0.03 65 / 0.04);
+  --shadow-lift: 0 4px 12px oklch(0.35 0.03 65 / 0.08), 0 1px 3px oklch(0.35 0.03 65 / 0.06);
 }
 
 @layer base {
@@ -30,73 +46,138 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* Tells the browser to theme scrollbars and form controls. Without it a
+       dark page still gets light native widgets. */
+    color-scheme: light;
+  }
+
+  html:where(.dark) {
+    color-scheme: dark;
   }
 
   * {
-    @apply border-stone-200 dark:border-stone-800;
+    @apply border-stone-200/80 dark:border-stone-800;
   }
 
   body {
     @apply bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100;
+    /* A barely-there warm wash so the page reads as paper rather than #fafaf9.
+       Two very wide radial gradients, no image, no bytes. */
+    background-image:
+      radial-gradient(1200px 600px at 12% -5%, oklch(0.97 0.02 75 / 0.8), transparent),
+      radial-gradient(900px 500px at 95% 0%, oklch(0.96 0.015 250 / 0.5), transparent);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(1200px 600px at 12% -5%, oklch(0.28 0.02 70 / 0.5), transparent),
+      radial-gradient(900px 500px at 95% 0%, oklch(0.26 0.02 265 / 0.4), transparent);
   }
 
   ::selection {
     @apply bg-amber-500/25;
   }
 
-  input,
-  textarea,
-  select {
+  /* Headings are content, not chrome — and they set the editorial tone. */
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  input, textarea, select {
     @apply text-stone-900 placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500;
   }
 
-  /* The app is a tool, not a document — keep focus rings visible but calm. */
+  /* Native select needs both explicitly or Windows dark mode renders it unreadable. */
+  select {
+    @apply bg-white dark:bg-stone-900;
+  }
+
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-amber-500;
+    border-radius: 0.35rem;
+  }
+
+  /* Kills the 300ms double-tap delay and the blue flash on iOS. */
+  a, button, [role="button"], summary, input, select, textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
   /*
-   * Each of these is written out in full rather than composed from the others.
-   * Tailwind v4's `@apply` resolves utilities only — it cannot apply a custom
-   * class defined in the same layer — so `.btn-primary { @apply btn … }` fails
-   * the build outright.
+   * Written out in full rather than composed from one another: Tailwind v4's
+   * `@apply` resolves utilities only and cannot apply a custom class from the
+   * same layer, so `.btn-primary { @apply btn … }` fails the build outright.
    */
   .card {
-    @apply rounded-2xl border bg-white shadow-sm dark:bg-stone-900/60;
+    @apply rounded-2xl border bg-white/80 backdrop-blur-[2px] dark:bg-stone-900/50;
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-raised {
+    @apply rounded-2xl border bg-white dark:bg-stone-900;
+    box-shadow: var(--shadow-lift);
   }
 
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
-           transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+           disabled:cursor-not-allowed disabled:opacity-50;
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 150ms;
   }
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
-           transition-colors disabled:cursor-not-allowed disabled:opacity-50
-           bg-stone-900 text-white hover:bg-stone-700
-           dark:bg-amber-500 dark:text-stone-950 dark:hover:bg-amber-400;
+           disabled:cursor-not-allowed disabled:opacity-50
+           bg-stone-900 text-white hover:bg-stone-700 active:scale-[0.98]
+           dark:bg-amber-400 dark:text-stone-950 dark:hover:bg-amber-300;
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 150ms;
+    box-shadow: var(--shadow-card);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm
-           font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50
-           bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800;
+           font-medium disabled:cursor-not-allowed disabled:opacity-50
+           bg-white/60 hover:bg-white hover:border-stone-300 active:scale-[0.98]
+           dark:bg-stone-900/60 dark:hover:bg-stone-800 dark:hover:border-stone-700;
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-duration: 150ms;
   }
 
   .field {
-    @apply w-full rounded-xl border bg-white px-3 py-2 text-sm
-           focus:border-amber-500 focus:outline-none dark:bg-stone-900;
+    @apply w-full rounded-xl border bg-white/80 px-3.5 py-2.5 text-sm
+           focus:border-amber-500 focus:outline-none dark:bg-stone-900/60;
+    transition-property: border-color, box-shadow, background-color;
+    transition-duration: 150ms;
+  }
+
+  .field:focus {
+    box-shadow: 0 0 0 4px oklch(0.77 0.16 70 / 0.14);
   }
 
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+    transition-property: background-color, border-color, color;
+    transition-duration: 150ms;
   }
 
-  /* Monospace numerals so columns of money and latency line up. */
+  /* Number columns only line up with tabular figures. */
   .tnum {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The label above a section — small, spaced, quiet. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400;
   }
 }
 
@@ -105,14 +186,42 @@
     scrollbar-width: thin;
   }
 
-  /* Used on the timeline rail. */
-  .timeline-rail {
-    @apply absolute left-[11px] top-2 bottom-0 w-px bg-stone-200 dark:bg-stone-800;
+  /* The vertical thread a timeline hangs from. */
+  .rail {
+    @apply absolute left-[15px] top-1 bottom-0 w-px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-stone-300) 8%,
+      var(--color-stone-300) 92%,
+      transparent
+    );
+  }
+
+  .dark .rail {
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--color-stone-700) 8%,
+      var(--color-stone-700) 92%,
+      transparent
+    );
   }
 }
 
+/* --- motion -------------------------------------------------------------- */
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  to { transform: translateX(100%); }
 }
 
 .spinner {
@@ -121,11 +230,43 @@
   border-top-color: var(--color-amber-500);
 }
 
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+/* Entrance for list items. `--i` staggers them; set it inline per row. */
+.rise {
+  animation: rise 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 
-.pulse-soft {
-  animation: pulse-soft 1.6s ease-in-out infinite;
+/* A skeleton that sweeps, rather than a grey block that throbs. */
+.skeleton {
+  @apply relative overflow-hidden rounded-xl bg-stone-200/60 dark:bg-stone-800/60;
+}
+
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0 -translate-x-full;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.35), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.06), transparent);
+}
+
+/*
+ * One rule, every animation. Someone who asks their OS to stop moving things
+ * means it, and a "subtle" entrance is still motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .rise {
+    animation: none;
+  }
 }
