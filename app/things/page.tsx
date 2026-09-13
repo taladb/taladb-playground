@@ -84,11 +84,12 @@ export default function ThingsPage() {
               setType(t)
               setCategory(null)
             }}
-            className={`chip transition-colors ${
+            className="chip shrink-0 font-semibold"
+            style={
               type === t
-                ? 'border-stone-900 bg-stone-900 text-white dark:border-amber-500 dark:bg-amber-500 dark:text-stone-950'
-                : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400'
-            }`}
+                ? { background: 'var(--color-ios-blue)', color: '#fff' }
+                : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
+            }
           >
             {t === 'all' ? 'Everything' : `${ENTITY_LABEL[t]}s`}
           </button>
@@ -99,11 +100,12 @@ export default function ThingsPage() {
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setCategory(null)}
-            className={`chip ${
+            className="chip font-medium"
+            style={
               category === null
-                ? 'border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-                : 'border-stone-200 text-stone-500 dark:border-stone-700 dark:text-stone-400'
-            }`}
+                ? { background: 'color-mix(in oklab, var(--color-ios-blue) 14%, transparent)', color: 'var(--color-ios-blue)' }
+                : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
+            }
           >
             All categories
           </button>
@@ -111,11 +113,12 @@ export default function ThingsPage() {
             <button
               key={c}
               onClick={() => setCategory(c === category ? null : c)}
-              className={`chip ${
+              className="chip font-medium"
+              style={
                 category === c
-                  ? 'border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-                  : 'border-stone-200 text-stone-500 hover:border-stone-400 dark:border-stone-700 dark:text-stone-400'
-              }`}
+                  ? { background: 'color-mix(in oklab, var(--color-ios-blue) 14%, transparent)', color: 'var(--color-ios-blue)' }
+                  : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
+              }
             >
               {c}
             </button>
@@ -123,7 +126,7 @@ export default function ThingsPage() {
         </div>
       )}
 
-      <p className="text-xs text-stone-500 dark:text-stone-400">
+      <p className="text-xs muted">
         {result.loading ? 'Searching…' : plural(entities.length, 'result')}
         {!trimmed && category && ` in ${category}`}
       </p>
@@ -133,8 +136,8 @@ export default function ThingsPage() {
           <span className="text-3xl" aria-hidden>
             📦
           </span>
-          <p className="font-serif text-lg font-medium">Nothing matched</p>
-          <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+          <p className="text-[17px] font-semibold">Nothing matched</p>
+          <p className="max-w-sm text-sm muted">
             Try a different search, or another type of thing.
           </p>
         </div>

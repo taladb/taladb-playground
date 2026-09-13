@@ -54,13 +54,13 @@ function Panel({
 }) {
   return (
     <section className="card overflow-hidden">
-      <header className="border-b bg-stone-50 px-5 py-3 dark:bg-stone-900">
+      <header className="px-5 py-3.5" style={{ boxShadow: 'inset 0 -0.5px 0 var(--color-separator)' }}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">{title}</h2>
           {badge}
         </div>
         {description && (
-          <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+          <p className="mt-1 text-xs leading-relaxed muted">
             {description}
           </p>
         )}
@@ -75,7 +75,7 @@ function Rows({ rows }: { rows: Array<[string, React.ReactNode]> }) {
     <dl className="space-y-2 text-sm">
       {rows.map(([label, value]) => (
         <div key={label} className="flex items-baseline justify-between gap-4">
-          <dt className="text-stone-500 dark:text-stone-400">{label}</dt>
+          <dt className="muted">{label}</dt>
           <dd className="tnum text-right font-medium">{value}</dd>
         </div>
       ))}
@@ -139,12 +139,12 @@ function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; 
       </div>
 
       {backfill && (
-        <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-3 text-xs muted">
           Embedded {backfill.done} of {backfill.total}.
         </p>
       )}
 
-      <p className="mt-4 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+      <p className="mt-4 text-xs leading-relaxed muted">
         Vectors are never treated as canonical. Every one can be regenerated from the memory text,
         which is why the export leaves them out and why losing them costs nothing but time.
       </p>
@@ -227,7 +227,7 @@ function VectorPanel({ db }: { db: TalaDB }) {
       badge={<EngineBadge engine="vector" size="xs" />}
       description="Semantic search runs against an exact index here, on purpose: at a few hundred memories a full scan is well under a millisecond, so an approximate graph would be slower and less accurate at once. TalaDB builds a persistent HNSW graph instead once the collection is large enough to be worth it."
     >
-      {status.loading && <p className="text-sm text-stone-500">Reading index status…</p>}
+      {status.loading && <p className="text-sm muted">Reading index status…</p>}
 
       {s && (
         <Rows
@@ -249,13 +249,16 @@ function VectorPanel({ db }: { db: TalaDB }) {
       )}
 
       {!s && !status.loading && (
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm muted">
           No vector index yet — it is created once memories have embeddings.
         </p>
       )}
 
       {s?.state === 'flat' && (
-        <p className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400">
+        <p
+          className="muted mt-3 rounded-[12px] p-3 text-[12px] leading-relaxed"
+          style={{ background: 'color-mix(in oklab, var(--color-ios-gray) 12%, transparent)' }}
+        >
           Every search here compares against all {s.totalVectors.toLocaleString()} vectors and
           returns the true nearest neighbours. There is no recall to measure, because nothing is
           being approximated.
@@ -279,14 +282,15 @@ function VectorPanel({ db }: { db: TalaDB }) {
       </div>
 
       {rebuild && (
-        <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-3 text-xs muted">
           {rebuild.state} — {rebuild.processed} / {rebuild.total}. Rebuilds run in batches and keep
           the live graph available until the replacement is published atomically.
         </p>
       )}
 
       {recall && (
-        <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-3 dark:border-violet-900 dark:bg-violet-950/30">
+        <div className="mt-4 rounded-[12px] p-3"
+          style={{ background: 'color-mix(in oklab, var(--color-ios-purple) 12%, transparent)' }}>
           <Rows
             rows={[
               ['Recall@10', `${(recall.recallAtK * 100).toFixed(1)}%`],
@@ -295,7 +299,7 @@ function VectorPanel({ db }: { db: TalaDB }) {
               ['Queries measured', recall.queries],
             ]}
           />
-          <p className="mt-2 text-[11px] leading-relaxed text-violet-900 dark:text-violet-300">
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-ios-purple)]">
             At this corpus size exact search is already fast, so the interesting number is the
             recall, not the speed-up — the graph is worth its cost at tens of thousands of vectors,
             not hundreds.
@@ -332,17 +336,17 @@ function IndexPanel({ db }: { db: TalaDB }) {
             <p className="font-mono text-xs font-semibold">{name}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {info.btree.map((f) => (
-                <span key={`b-${f}`} className="chip border-sky-300 bg-sky-50 py-0.5 font-mono text-[10px] text-sky-800 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-300">
+                <span key={`b-${f}`} className="chip py-0.5 font-mono text-[10px]">
                   {f}
                 </span>
               ))}
               {info.fts.map((f) => (
-                <span key={`f-${f}`} className="chip border-amber-300 bg-amber-50 py-0.5 font-mono text-[10px] text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                <span key={`f-${f}`} className="chip py-0.5 font-mono text-[10px]">
                   fts:{f}
                 </span>
               ))}
               {info.vector.map((f) => (
-                <span key={`v-${f}`} className="chip border-violet-300 bg-violet-50 py-0.5 font-mono text-[10px] text-violet-800 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-300">
+                <span key={`v-${f}`} className="chip py-0.5 font-mono text-[10px]">
                   vec:{f}
                 </span>
               ))}
@@ -378,7 +382,7 @@ function StoragePanel({ db }: { db: TalaDB }) {
           ]}
         />
       ) : (
-        <p className="text-sm text-stone-500">Reading storage info…</p>
+        <p className="text-sm muted">Reading storage info…</p>
       )}
 
       <button
@@ -396,7 +400,7 @@ function StoragePanel({ db }: { db: TalaDB }) {
         {compacting ? 'Compacting…' : 'Compact database'}
       </button>
 
-      <p className="mt-3 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+      <p className="mt-3 text-xs leading-relaxed muted">
         Multiple tabs share one database through the owning tab, so a write here shows up in the
         others without a refresh. Ownership moves automatically if this tab closes.
       </p>
@@ -464,16 +468,16 @@ function DataPanel({ db }: { db: TalaDB }) {
       </div>
 
       {report && (
-        <p className="mt-3 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-3 text-xs muted">
           Imported {report.entities} things, {report.memories} memories, {report.relations}{' '}
           connections.{' '}
           {report.skipped > 0 && `${report.skipped} were already here and were left alone.`}
         </p>
       )}
 
-      {error && <p className="mt-3 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+      {error && <p className="mt-3 text-xs text-[var(--color-ios-red)]">{error}</p>}
 
-      <p className="mt-4 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+      <p className="mt-4 text-xs leading-relaxed muted">
         Importing the same pack twice is safe: documents keep their ids, so the second run is
         refused per-document rather than creating a second copy of everything.
       </p>

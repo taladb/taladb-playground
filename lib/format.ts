@@ -83,3 +83,47 @@ export const ENTITY_LABEL: Record<string, string> = {
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`
 }
+
+/**
+ * A colour per memory type, from the iOS system palette.
+ *
+ * This is the single biggest reason the Health app is readable: a mixed list
+ * sorts itself by colour before you read a word. Related types deliberately
+ * share a hue — repair/maintenance/replacement are all warm, purchase/expense
+ * are the money pair, loan/return are the pair that cancel each other — so the
+ * grouping survives even though fifteen distinct colours would not.
+ *
+ * The engine colours (sky, violet, emerald) are reserved for engine
+ * attribution and never appear here.
+ */
+export const MEMORY_COLOR: Record<MemoryType, string> = {
+  note: 'var(--color-ios-gray)',
+  observation: 'var(--color-ios-yellow)',
+  purchase: 'var(--color-ios-green)',
+  expense: 'var(--color-ios-pink)',
+  maintenance: 'var(--color-ios-orange)',
+  replacement: 'var(--color-ios-mint)',
+  repair: 'var(--color-ios-red)',
+  installation: 'var(--color-ios-brown)',
+  loan: 'var(--color-ios-blue)',
+  return: 'var(--color-ios-teal)',
+  movement: 'var(--color-ios-indigo)',
+  decision: 'var(--color-ios-purple)',
+  conversation: 'var(--color-ios-cyan)',
+  appointment: 'var(--color-ios-cyan)',
+  warranty: 'var(--color-ios-blue)',
+}
+
+export const ENTITY_COLOR: Record<string, string> = {
+  thing: 'var(--color-ios-blue)',
+  person: 'var(--color-ios-orange)',
+  place: 'var(--color-ios-green)',
+  organization: 'var(--color-ios-purple)',
+  project: 'var(--color-ios-indigo)',
+  document: 'var(--color-ios-gray)',
+}
+
+/** A 15% wash of a category colour, for tinted backgrounds behind emoji. */
+export function tint(color: string, pct = 15): string {
+  return `color-mix(in oklab, ${color} ${pct}%, transparent)`
+}

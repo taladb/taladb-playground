@@ -75,13 +75,13 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
         </span>
         <div className="min-w-0 flex-1">
           <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">{e.name}</h1>
-          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+          <p className="mt-1 text-sm muted">
             {e.category || ENTITY_LABEL[e.entityType]}
             {e.manufacturer && ` · ${e.manufacturer}`}
             {e.model && ` ${e.model}`}
           </p>
           {e.description && (
-            <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-stone-300">
+            <p className="mt-2 max-w-2xl text-sm muted">
               {e.description}
             </p>
           )}
@@ -92,7 +92,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-stone-500 dark:text-stone-400">Where it is</p>
+            <p className="text-xs muted">Where it is</p>
             <EngineBadge engine="graph" size="xs" />
           </div>
           {location.data?.path.length ? (
@@ -101,26 +101,26 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
                 {location.data.path.map((p) => p.name).join(' → ')}
               </p>
               {location.data.via && (
-                <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+                <p className="mt-1 text-xs muted">
                   Moved {relative(location.data.via.occurredAt)}
                 </p>
               )}
             </>
           ) : (
-            <p className="mt-1.5 text-sm text-stone-400 dark:text-stone-500">Not recorded</p>
+            <p className="mt-1.5 text-sm muted-more">Not recorded</p>
           )}
         </div>
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-stone-500 dark:text-stone-400">Total recorded spend</p>
+            <p className="text-xs muted">Total recorded spend</p>
             <EngineBadge engine="structured" size="xs" />
           </div>
           <p className="tnum mt-1.5 text-sm font-medium">
             {spend.data ? money(spend.data.total) : '—'}
           </p>
           {spend.data && (
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+            <p className="mt-1 text-xs muted">
               over {plural(spend.data.n, 'memory', 'memories')}
             </p>
           )}
@@ -128,7 +128,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-stone-500 dark:text-stone-400">Warranty</p>
+            <p className="text-xs muted">Warranty</p>
             <EngineBadge engine="structured" size="xs" />
           </div>
           {e.warrantyExpiresAt ? (
@@ -137,8 +137,8 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
               <p
                 className={`mt-1 text-xs ${
                   e.warrantyExpiresAt < Date.now()
-                    ? 'text-stone-500 dark:text-stone-400'
-                    : 'text-emerald-600 dark:text-emerald-400'
+                    ? 'muted'
+                    : 'text-[var(--color-ios-green)]'
                 }`}
               >
                 {e.warrantyExpiresAt < Date.now() ? 'Expired' : 'Covered'}{' '}
@@ -146,7 +146,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
               </p>
             </>
           ) : (
-            <p className="mt-1.5 text-sm text-stone-400 dark:text-stone-500">None recorded</p>
+            <p className="mt-1.5 text-sm muted-more">None recorded</p>
           )}
         </div>
       </div>
@@ -166,8 +166,8 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
             aria-current={tab === key ? 'page' : undefined}
             className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
               tab === key
-                ? 'border-amber-500 font-medium text-stone-900 dark:text-stone-100'
-                : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                ? 'border-[var(--color-ios-blue)] font-semibold text-[var(--color-ios-blue)]'
+                : 'border-transparent muted'
             }`}
           >
             {label}
@@ -199,8 +199,8 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
         <span className="text-3xl" aria-hidden>
           🕰️
         </span>
-        <p className="font-serif text-lg font-medium">Nothing has happened to this yet</p>
-        <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-[17px] font-semibold">Nothing has happened to this yet</p>
+        <p className="max-w-sm text-sm muted">
           Record something and it will appear here, newest first.
         </p>
       </div>
@@ -219,7 +219,13 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
     <div className="space-y-10">
       {[...byYear.entries()].map(([year, rows]) => (
         <section key={year}>
-          <h2 className="tnum sticky top-14 z-20 -mx-1 mb-3 w-fit rounded-lg bg-stone-50/85 px-2 py-1 font-serif text-sm font-semibold text-stone-400 backdrop-blur-sm dark:bg-stone-950/85 dark:text-stone-500">
+          <h2
+            className="tnum sticky top-14 z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
+            style={{
+              background: 'color-mix(in oklab, var(--color-group) 75%, transparent)',
+              color: 'var(--color-label-2)',
+            }}
+          >
             {year}
           </h2>
           <MemoryThread>
@@ -257,13 +263,13 @@ function Details({ entityId }: { entityId: string }) {
         <dl className="card divide-y p-0">
           {rows.map(([label, value]) => (
             <div key={label} className="flex gap-4 px-5 py-3 text-sm">
-              <dt className="w-40 shrink-0 text-stone-500 dark:text-stone-400">{label}</dt>
+              <dt className="w-40 shrink-0 muted">{label}</dt>
               <dd className="min-w-0 flex-1 font-medium break-words">{value}</dd>
             </div>
           ))}
         </dl>
       ) : (
-        <p className="card p-6 text-sm text-stone-500 dark:text-stone-400">
+        <p className="card p-6 text-sm muted">
           No details recorded.
         </p>
       )}
@@ -273,7 +279,8 @@ function Details({ entityId }: { entityId: string }) {
           {e.tags.map((tag) => (
             <span
               key={tag}
-              className="chip border-stone-200 bg-white text-stone-500 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400"
+              className="chip"
+              style={{ background: 'var(--color-card)', color: 'var(--color-label-2)' }}
             >
               {tag}
             </span>
@@ -281,7 +288,7 @@ function Details({ entityId }: { entityId: string }) {
         </div>
       )}
 
-      <p className="text-xs text-stone-500 dark:text-stone-400">
+      <p className="text-xs muted">
         Core fields are columns; everything below them lives in a free-form attribute map, so a
         bicycle can record a chain model and a laptop can record a charger wattage without the
         schema knowing either exists.
@@ -304,7 +311,7 @@ function Connections({ entityId }: { entityId: string }) {
 
   if (!groups.length && !inside.length) {
     return (
-      <p className="card p-6 text-sm text-stone-500 dark:text-stone-400">
+      <p className="card p-6 text-sm muted">
         Nothing is connected to this yet.
       </p>
     )
@@ -314,7 +321,7 @@ function Connections({ entityId }: { entityId: string }) {
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <EngineBadge engine="graph" size="xs" />
-        <p className="text-xs text-stone-500 dark:text-stone-400">
+        <p className="text-xs muted">
           One hop over the relations collection, both directions.
         </p>
       </div>
@@ -327,7 +334,7 @@ function Connections({ entityId }: { entityId: string }) {
               <Link
                 key={child._id}
                 href={`/entity/${child._id}`}
-                className="chip border-stone-200 bg-white hover:border-amber-400 dark:border-stone-700 dark:bg-stone-900"
+                className="chip "
               >
                 <span aria-hidden>{child.icon}</span>
                 {child.name}
@@ -347,7 +354,7 @@ function Connections({ entityId }: { entityId: string }) {
               <Link
                 key={other._id}
                 href={`/entity/${other._id}`}
-                className="chip border-stone-200 bg-white hover:border-amber-400 dark:border-stone-700 dark:bg-stone-900"
+                className="chip "
               >
                 <span aria-hidden>{other.icon}</span>
                 {other.name}

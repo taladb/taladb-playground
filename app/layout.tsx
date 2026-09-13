@@ -1,28 +1,21 @@
 import type { Metadata, Viewport } from 'next'
-import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Nav } from './components/Nav'
 import { Footer } from './components/Footer'
 
 /*
- * Loaded through `next/font`, which self-hosts the files and emits a matched
- * size-adjusted fallback — so there is no request to Google at runtime and no
- * layout shift when the face swaps in. The previous version named these
- * families in CSS without ever loading them, and rendered in system fallbacks.
+ * The interface is meant to look native on Apple hardware, where the system
+ * font *is* SF — so the stack in `globals.css` reaches for `-apple-system`
+ * first and only falls through to Inter elsewhere. `next/font` self-hosts that
+ * fallback and emits a size-adjusted metric match, so there is no request to
+ * Google at runtime and no shift when the face swaps in.
  */
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
-})
-
-/** The editorial voice: headings, and the words the user actually wrote. */
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
-  display: 'swap',
-  axes: ['SOFT', 'opsz'],
 })
 
 /** Engine internals — index names, latencies, distance counts. */
@@ -50,15 +43,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${fraunces.variable} ${jetbrains.variable}`}
+      className={`${inter.variable} ${jetbrains.variable}`}
     >
       <body className="min-h-dvh">
         {/* First tab stop on every page: skip the nav, land on the content. */}
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50
-                     focus:rounded-xl focus:bg-stone-900 focus:px-4 focus:py-2 focus:text-sm
-                     focus:font-medium focus:text-white dark:focus:bg-amber-400 dark:focus:text-stone-950"
+ focus:rounded-xl focus:bg-[var(--color-ios-blue)] focus:px-4 focus:py-2 focus:text-sm
+                     focus:font-semibold focus:text-white"
         >
           Skip to content
         </a>

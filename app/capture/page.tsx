@@ -22,7 +22,7 @@ import { MEMORY_TYPES, type Entity, type MemoryType } from '@/lib/types'
  */
 export default function CapturePage() {
   return (
-    <Suspense fallback={<div className="card h-40 animate-pulse bg-stone-100 dark:bg-stone-900" />}>
+    <Suspense fallback={<div className="card h-40 animate-pulse " />}>
       <Capture />
     </Suspense>
   )
@@ -106,7 +106,7 @@ function Capture() {
     <div className="space-y-6">
       <div>
         <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Remember Something</h1>
-        <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-stone-400">
+        <p className="mt-2 max-w-2xl text-sm muted">
           Write it the way you would say it out loud.
         </p>
       </div>
@@ -122,11 +122,11 @@ function Capture() {
           onChange={(e) => setText(e.target.value)}
           rows={4}
           placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200…"
-          className="w-full resize-none bg-transparent font-serif text-[17px] leading-relaxed outline-none
-                     placeholder:font-sans placeholder:text-[15px]"
+          className="w-full resize-none bg-transparent text-[17px] leading-relaxed outline-none
+ placeholder:text-[17px]"
         />
         <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-          <p className="text-xs text-stone-500 dark:text-stone-400">
+          <p className="text-xs muted">
             Nothing is saved until you confirm.
           </p>
           <button
@@ -140,16 +140,16 @@ function Capture() {
       </div>
 
       {error && (
-        <div className="card border-rose-300 p-4 text-sm text-rose-700 dark:border-rose-900 dark:text-rose-300">
+        <div className="card p-4 text-sm text-[var(--color-ios-red)]">
           {error}
         </div>
       )}
 
       {proposal && type && (
         <section className="card overflow-hidden">
-          <header className="border-b bg-stone-50 px-5 py-3 dark:bg-stone-900">
+          <header className="px-5 py-3.5" style={{ boxShadow: 'inset 0 -0.5px 0 var(--color-separator)' }}>
             <h2 className="text-sm font-semibold">What this looks like</h2>
-            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+            <p className="mt-0.5 text-xs muted">
               Change anything that is wrong. Each field says why it was filled in.
             </p>
           </header>
@@ -243,8 +243,11 @@ function Capture() {
             )}
           </div>
 
-          <footer className="flex items-center justify-between gap-3 border-t bg-stone-50 px-5 py-3 dark:bg-stone-900">
-            <p className="text-xs text-stone-500 dark:text-stone-400">
+          <footer
+            className="flex items-center justify-between gap-3 px-5 py-3.5"
+            style={{ boxShadow: 'inset 0 0.5px 0 var(--color-separator)' }}
+          >
+            <p className="text-xs muted">
               Saving marks this confirmed by you.
             </p>
             <button onClick={() => void save()} disabled={saving} className="btn-primary text-sm">
@@ -287,15 +290,15 @@ function Row({
           <p className="text-sm font-medium">{label}</p>
         )}
         {reason && (
-          <p className="mt-0.5 text-[11px] leading-snug text-stone-500 dark:text-stone-400">
+          <p className="mt-0.5 text-[11px] leading-snug muted">
             {confidence !== undefined && (
               <span
                 className={
                   confidence >= 0.8
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-[var(--color-ios-green)]'
                     : confidence >= 0.5
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-stone-400'
+                      ? 'text-[var(--color-ios-orange)]'
+                      : 'muted-more'
                 }
               >
                 {confidence >= 0.8 ? '◐' : confidence >= 0.5 ? '◐' : '◇'}{' '}
@@ -312,7 +315,7 @@ function Row({
 
 function EntityPill({ entity }: { entity: Entity }) {
   return (
-    <span className="chip border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900">
+    <span className="chip" style={{ background: 'color-mix(in oklab, var(--color-ios-gray) 14%, transparent)' }}>
       <span aria-hidden>{entity.icon}</span>
       {entity.name}
     </span>
@@ -328,7 +331,7 @@ function NoSubjectHint() {
   }, [db])
 
   return (
-    <p className="text-xs text-stone-500 dark:text-stone-400">
+    <p className="text-xs muted">
       No thing matched this text{count !== null && ` out of the ${count} on this device`}. The
       memory will still be saved and fully searchable — it just will not appear on any timeline
       until it names something.

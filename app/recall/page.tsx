@@ -84,7 +84,7 @@ export default function RecallPage() {
         <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">
           What do I already know about this?
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-stone-400">
+        <p className="mt-2 max-w-2xl text-sm muted">
           Ask in your own words. Questions with an exact answer get one — computed from the
           database, not generated. The rest are ranked, and you can see exactly how.
         </p>
@@ -125,7 +125,8 @@ export default function RecallPage() {
                 setQuery(example.q)
                 void run(example.q)
               }}
-              className="chip border-stone-200 bg-white text-stone-600 hover:border-amber-400 hover:text-amber-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400 dark:hover:text-amber-400"
+              className="chip shrink-0 font-medium"
+              style={{ background: 'var(--color-card)', color: 'var(--color-ios-blue)' }}
             >
               {example.q}
             </button>
@@ -136,7 +137,7 @@ export default function RecallPage() {
       <SemanticTier state={embedder} onEnable={() => void loadEmbedder()} />
 
       {error && (
-        <div className="card border-rose-300 p-4 text-sm text-rose-700 dark:border-rose-900 dark:text-rose-300">
+        <div className="card p-4 text-sm text-[var(--color-ios-red)]">
           {error}
         </div>
       )}
@@ -156,9 +157,10 @@ export default function RecallPage() {
 function SemanticTier({ state, onEnable }: { state: EmbedderState; onEnable: () => void }) {
   if (state.status === 'ready') {
     return (
-      <div className="card flex items-center gap-3 border-violet-300 bg-violet-50/60 p-3 text-sm dark:border-violet-900 dark:bg-violet-950/30">
+      <div className="card flex items-center gap-3 p-3.5 text-[14px]"
+        style={{ background: 'color-mix(in oklab, var(--color-ios-purple) 12%, transparent)' }}>
         <EngineBadge engine="vector" size="xs" />
-        <p className="text-violet-900 dark:text-violet-200">
+        <p className="text-[var(--color-ios-purple)]">
           Semantic search is on. Queries are embedded on this device and fused with keyword
           ranking.
         </p>
@@ -173,13 +175,13 @@ function SemanticTier({ state, onEnable }: { state: EmbedderState; onEnable: () 
           <span className="spinner h-4 w-4" />
           <p className="text-sm">Downloading the embedding model — {state.progress}%</p>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800">
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full ">
           <div
-            className="h-full rounded-full bg-violet-500 transition-[width] duration-300"
+            className="h-full rounded-full bg-[var(--color-ios-purple)] transition-[width] duration-300"
             style={{ width: `${state.progress}%` }}
           />
         </div>
-        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-2 text-xs muted">
           Once. Cached in this browser, then it runs offline like everything else.
         </p>
       </div>
@@ -191,14 +193,14 @@ function SemanticTier({ state, onEnable }: { state: EmbedderState; onEnable: () 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-xl">
           <h2 className="text-sm font-semibold">Semantic search is off</h2>
-          <p className="mt-1 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+          <p className="mt-1 text-xs leading-relaxed muted">
             Everything works without it: exact answers, keyword ranking, timelines, aggregation.
             Turning it on downloads a 25 MB embedding model that runs entirely on this device, and
             lets a search for <em>“clicking noise”</em> find a memory that only ever said{' '}
             <em>“rattle”</em>.
           </p>
           {state.status === 'error' && (
-            <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">{state.message}</p>
+            <p className="mt-2 text-xs text-[var(--color-ios-red)]">{state.message}</p>
           )}
         </div>
         <button onClick={onEnable} className="btn-ghost shrink-0 text-sm">
@@ -216,22 +218,25 @@ function Results({ result }: { result: RecallResult }) {
         <section className="card-raised overflow-hidden">
           {/* Provenance sits above the answer, not under it. Who computed this
               is part of reading it, not a footnote. */}
-          <div className="flex flex-wrap items-center gap-2.5 border-b bg-stone-50/80 px-5 py-3 dark:bg-stone-900/60">
+          <div
+            className="flex flex-wrap items-center gap-2.5 px-5 py-3"
+            style={{ boxShadow: 'inset 0 -0.5px 0 var(--color-separator)' }}
+          >
             <EngineBadge engine={result.answer.engine} />
-            <span className="text-xs leading-snug text-stone-500 dark:text-stone-400">
+            <span className="text-xs leading-snug muted">
               {result.answer.method}
             </span>
           </div>
 
           <div className="px-5 py-6 md:px-6">
-            <p className="font-serif text-3xl font-semibold leading-tight tracking-tight md:text-4xl">
+            <p className="text-[32px] font-bold leading-[1.1] tracking-[-0.022em] md:text-[38px]">
               {result.answer.headline}
             </p>
             <div className="mt-3 space-y-2">
               {result.answer.lines.map((line, i) => (
                 <p
                   key={i}
-                  className="max-w-2xl text-[15px] leading-relaxed text-stone-600 dark:text-stone-300"
+                  className="max-w-2xl text-[15px] leading-relaxed muted"
                 >
                   {line}
                 </p>
@@ -251,7 +256,7 @@ function Results({ result }: { result: RecallResult }) {
       <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="eyebrow">{result.answer ? 'Evidence' : 'Closest Memories'}</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
+          <p className="text-xs muted">
             {result.semanticUsed
               ? 'Keyword and vector rankings, fused'
               : 'Keyword ranking only — semantic search is off'}
@@ -263,8 +268,8 @@ function Results({ result }: { result: RecallResult }) {
             <span className="text-3xl" aria-hidden>
               🔍
             </span>
-            <p className="font-serif text-lg font-medium">Nothing matched</p>
-            <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+            <p className="text-[17px] font-semibold">Nothing matched</p>
+            <p className="max-w-sm text-sm muted">
               Every word here is searched against memories you wrote. There is no corpus behind
               this beyond your own.
             </p>
@@ -313,7 +318,7 @@ function Inspector({ result }: { result: RecallResult }) {
     <details className="card overflow-hidden">
       <summary className="cursor-pointer px-5 py-3 text-sm font-medium select-none">
         How this was answered
-        <span className="tnum ml-2 font-normal text-stone-500 dark:text-stone-400">
+        <span className="tnum ml-2 font-normal muted">
           {result.timings.totalMs.toFixed(1)} ms, entirely on-device
         </span>
       </summary>
@@ -322,34 +327,34 @@ function Inspector({ result }: { result: RecallResult }) {
         <ol className="space-y-1.5">
           {stages.map(([name, detail, ran]) => (
             <li key={name} className="flex items-baseline gap-3 text-sm">
-              <span className={ran ? 'text-emerald-600 dark:text-emerald-400' : 'opacity-30'}>
+              <span className={ran ? 'text-[var(--color-ios-green)]' : 'opacity-30'}>
                 {ran ? '●' : '○'}
               </span>
-              <span className={`w-36 shrink-0 ${ran ? '' : 'text-stone-400 dark:text-stone-600'}`}>
+              <span className={`w-36 shrink-0 ${ran ? '' : 'muted-more'}`}>
                 {name}
               </span>
-              <span className="text-xs text-stone-500 dark:text-stone-400">{detail}</span>
+              <span className="text-xs muted">{detail}</span>
             </li>
           ))}
         </ol>
 
         <dl className="grid grid-cols-2 gap-3 border-t pt-4 text-xs sm:grid-cols-4">
           <div>
-            <dt className="text-stone-500 dark:text-stone-400">Structured</dt>
+            <dt className="muted">Structured</dt>
             <dd className="tnum mt-0.5 font-medium">{result.timings.structuredMs.toFixed(1)} ms</dd>
           </div>
           <div>
-            <dt className="text-stone-500 dark:text-stone-400">Retrieval</dt>
+            <dt className="muted">Retrieval</dt>
             <dd className="tnum mt-0.5 font-medium">{result.timings.retrievalMs.toFixed(1)} ms</dd>
           </div>
           {result.execution && (
             <>
               <div>
-                <dt className="text-stone-500 dark:text-stone-400">Index path</dt>
+                <dt className="muted">Index path</dt>
                 <dd className="mt-0.5 font-medium uppercase">{result.execution.path}</dd>
               </div>
               <div>
-                <dt className="text-stone-500 dark:text-stone-400">Distances computed</dt>
+                <dt className="muted">Distances computed</dt>
                 <dd className="tnum mt-0.5 font-medium">
                   {result.execution.distanceComputations.toLocaleString()}
                 </dd>
@@ -359,13 +364,13 @@ function Inspector({ result }: { result: RecallResult }) {
         </dl>
 
         {result.execution && (
-          <p className="text-xs text-stone-500 dark:text-stone-400">
+          <p className="text-xs muted">
             {result.execution.reason}
             {result.execution.efSearch !== null && ` · efSearch ${result.execution.efSearch}`}
           </p>
         )}
 
-        <p className="border-t pt-3 text-xs text-stone-500 dark:text-stone-400">
+        <p className="border-t pt-3 text-xs muted">
           Engines used:{' '}
           <span className="inline-flex flex-wrap gap-1 align-middle">
             {result.engines.map((engine) => (

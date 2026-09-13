@@ -3,42 +3,84 @@
 @variant dark (&:where(.dark, .dark *));
 
 /*
- * Keepsake's design language: a well-kept archive.
+ * Keepsake's design language: iOS, specifically the Health app.
  *
- * The product is a record of someone's life, so the surface is warm paper
- * rather than the usual cool product blue, and the voice is editorial — a
- * serif for the things a person wrote, a sans for the chrome around it. The
- * distinction is load-bearing: a memory's title is *content*, a button label
- * is *interface*, and the two should not look alike.
+ * Three things carry that look, and all three are doing real work here:
  *
- * The one part of the palette doing semantic work is the engine colours. Every
- * result is attributed to whichever engine produced it, and the same three hues
- * mean the same three things everywhere: sky for the document engine's exact
- * answers, violet for vector similarity, emerald for a graph walk. Hybrid
- * results carry sky and violet together, because that is what they are.
+ *   1. Every category owns a colour. Health gives Activity red, Sleep teal,
+ *      Nutrition green — so a glance at a mixed list sorts itself before you
+ *      read a word. Keepsake has fifteen memory types and six entity types,
+ *      which is exactly the case that needs it.
+ *   2. Grouped cards on a recessed ground, not bordered boxes on white. The
+ *      separation comes from the surface behind them, so borders can go away.
+ *   3. Tight, heavy system type. Large titles at the top of a screen, semibold
+ *      labels, and secondary text in a true grey rather than a tinted one.
+ *
+ * The engine colours stay reserved: sky for the document engine's exact
+ * answers, violet for vector similarity, emerald for a graph walk. They are the
+ * one part of the palette that means something specific, so no category is
+ * allowed to borrow them.
  */
 @theme {
-  /* Loaded by next/font in layout.tsx — these names are the CSS variables it
-     exposes, not bare family names, so the font actually arrives. The previous
-     version named "Inter" and never loaded it, and quietly rendered in system
-     fallbacks everywhere. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  /* SF first — on Apple hardware this *is* the system font. Inter is the
+     cross-platform stand-in, and is close enough that the rhythm survives. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter),
+    ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter),
+    ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-jb), ui-monospace, monospace;
 
-  /* Warm neutrals. Named by role so a change here is a change everywhere. */
-  --color-ink: oklch(0.24 0.012 65);
-  --color-ink-soft: oklch(0.48 0.012 65);
-  --color-ink-faint: oklch(0.63 0.010 65);
+  /* iOS system colours (light). */
+  --color-ios-red: #ff3b30;
+  --color-ios-orange: #ff9500;
+  --color-ios-yellow: #ffcc00;
+  --color-ios-green: #34c759;
+  --color-ios-mint: #00c7be;
+  --color-ios-teal: #30b0c7;
+  --color-ios-cyan: #32ade6;
+  --color-ios-blue: #007aff;
+  --color-ios-indigo: #5856d6;
+  --color-ios-purple: #af52de;
+  --color-ios-pink: #ff2d55;
+  --color-ios-brown: #a2845e;
+  --color-ios-gray: #8e8e93;
 
-  --color-engine-doc: var(--color-sky-600);
-  --color-engine-vector: var(--color-violet-600);
-  --color-engine-graph: var(--color-emerald-600);
+  /* Surfaces. `group` is the recessed ground; `card` sits on top of it. */
+  --color-group: #f2f2f7;
+  --color-card: #ffffff;
+  --color-separator: #3c3c4349;
 
-  /* Warm, low-contrast shadows. A neutral-grey shadow over a warm ground reads
-     as dirt; tinting it toward the paper keeps the lift without the smudge. */
-  --shadow-card: 0 1px 2px oklch(0.35 0.03 65 / 0.06), 0 1px 1px oklch(0.35 0.03 65 / 0.04);
-  --shadow-lift: 0 4px 12px oklch(0.35 0.03 65 / 0.08), 0 1px 3px oklch(0.35 0.03 65 / 0.06);
+  --color-label-2: #3c3c4399;
+  --color-label-3: #3c3c434d;
+
+  --radius-card: 16px;
+}
+
+/* Dark mode flips the stack: the ground goes true black and cards lift to
+   near-black, which is how iOS does it on OLED. The accent colours brighten,
+   because the light-mode values are too dense to read on black. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-group: #000000;
+    --color-card: #1c1c1e;
+    --color-separator: #54545899;
+    --color-label-2: #ebebf599;
+    --color-label-3: #ebebf54d;
+
+    --color-ios-red: #ff453a;
+    --color-ios-orange: #ff9f0a;
+    --color-ios-yellow: #ffd60a;
+    --color-ios-green: #30d158;
+    --color-ios-mint: #63e6e2;
+    --color-ios-teal: #40c8e0;
+    --color-ios-cyan: #64d2ff;
+    --color-ios-blue: #0a84ff;
+    --color-ios-indigo: #5e5ce6;
+    --color-ios-purple: #bf5af2;
+    --color-ios-pink: #ff375f;
+    --color-ios-brown: #ac8e68;
+    --color-ios-gray: #98989d;
+  }
 }
 
 @layer base {
@@ -46,65 +88,58 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Tells the browser to theme scrollbars and form controls. Without it a
-       dark page still gets light native widgets. */
-    color-scheme: light;
-  }
-
-  html:where(.dark) {
-    color-scheme: dark;
-  }
-
-  * {
-    @apply border-stone-200/80 dark:border-stone-800;
+    color-scheme: light dark;
   }
 
   body {
-    @apply bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100;
-    /* A barely-there warm wash so the page reads as paper rather than #fafaf9.
-       Two very wide radial gradients, no image, no bytes. */
-    background-image:
-      radial-gradient(1200px 600px at 12% -5%, oklch(0.97 0.02 75 / 0.8), transparent),
-      radial-gradient(900px 500px at 95% 0%, oklch(0.96 0.015 250 / 0.5), transparent);
-    background-attachment: fixed;
+    background: var(--color-group);
+    @apply text-black dark:text-white;
   }
 
-  .dark body {
-    background-image:
-      radial-gradient(1200px 600px at 12% -5%, oklch(0.28 0.02 70 / 0.5), transparent),
-      radial-gradient(900px 500px at 95% 0%, oklch(0.26 0.02 265 / 0.4), transparent);
-  }
-
-  ::selection {
-    @apply bg-amber-500/25;
-  }
-
-  /* Headings are content, not chrome — and they set the editorial tone. */
-  h1, h2, h3 {
-    font-family: var(--font-serif);
-    font-optical-sizing: auto;
+  /* Large titles are the iOS navigation signature: 34pt, bold, tight. */
+  h1 {
+    font-family: var(--font-display);
+    @apply text-[34px] font-bold leading-[1.1] tracking-[-0.022em];
     text-wrap: balance;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    @apply text-[22px] font-bold tracking-[-0.018em];
+    text-wrap: balance;
+  }
+
+  h3 {
+    @apply font-semibold tracking-[-0.01em];
   }
 
   p {
     text-wrap: pretty;
   }
 
-  input, textarea, select {
-    @apply text-stone-900 placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500;
+  ::selection {
+    background: color-mix(in oklab, var(--color-ios-blue) 25%, transparent);
   }
 
-  /* Native select needs both explicitly or Windows dark mode renders it unreadable. */
+  input, textarea, select {
+    @apply text-black dark:text-white;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-label-3);
+  }
+
   select {
-    @apply bg-white dark:bg-stone-900;
+    background-color: var(--color-card);
+    @apply text-black dark:text-white;
   }
 
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-amber-500;
-    border-radius: 0.35rem;
+    outline: 2px solid var(--color-ios-blue);
+    outline-offset: 2px;
+    border-radius: 10px;
   }
 
-  /* Kills the 300ms double-tap delay and the blue flash on iOS. */
   a, button, [role="button"], summary, input, select, textarea {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
@@ -113,71 +148,105 @@
 
 @layer components {
   /*
-   * Written out in full rather than composed from one another: Tailwind v4's
-   * `@apply` resolves utilities only and cannot apply a custom class from the
-   * same layer, so `.btn-primary { @apply btn … }` fails the build outright.
+   * Each written out in full: Tailwind v4's `@apply` resolves utilities only
+   * and cannot apply a custom class from the same layer, so composing these
+   * from one another fails the build.
    */
+
+  /** A grouped card floating on the recessed ground. */
   .card {
-    @apply rounded-2xl border bg-white/80 backdrop-blur-[2px] dark:bg-stone-900/50;
-    box-shadow: var(--shadow-card);
+    background: var(--color-card);
+    border-radius: var(--radius-card);
   }
 
-  .card-raised {
-    @apply rounded-2xl border bg-white dark:bg-stone-900;
-    box-shadow: var(--shadow-lift);
+  .list-row {
+    @apply flex w-full items-center gap-3 px-4 py-3 text-left;
+    transition: background-color 120ms;
   }
 
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
-           disabled:cursor-not-allowed disabled:opacity-50;
-    transition-property: background-color, border-color, color, box-shadow, transform;
-    transition-duration: 150ms;
+  .list-row:active {
+    background: color-mix(in oklab, var(--color-ios-gray) 18%, transparent);
+  }
+
+  /* The hairline divider, inset to clear the leading icon. */
+  .list-row + .list-row {
+    box-shadow: inset 0 0.5px 0 var(--color-separator);
+  }
+
+  .list-row-flush + .list-row-flush {
+    box-shadow: inset 0 0.5px 0 var(--color-separator);
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
-           disabled:cursor-not-allowed disabled:opacity-50
-           bg-stone-900 text-white hover:bg-stone-700 active:scale-[0.98]
-           dark:bg-amber-400 dark:text-stone-950 dark:hover:bg-amber-300;
-    transition-property: background-color, border-color, color, box-shadow, transform;
-    transition-duration: 150ms;
-    box-shadow: var(--shadow-card);
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-[17px]
+           font-semibold text-white disabled:opacity-40;
+    background: var(--color-ios-blue);
+    transition: transform 120ms, opacity 120ms;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+    opacity: 0.85;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm
-           font-medium disabled:cursor-not-allowed disabled:opacity-50
-           bg-white/60 hover:bg-white hover:border-stone-300 active:scale-[0.98]
-           dark:bg-stone-900/60 dark:hover:bg-stone-800 dark:hover:border-stone-700;
-    transition-property: background-color, border-color, color, box-shadow, transform;
-    transition-duration: 150ms;
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-[17px]
+           font-medium disabled:opacity-40;
+    background: var(--color-card);
+    color: var(--color-ios-blue);
+    transition: transform 120ms, opacity 120ms;
   }
 
+  .btn-ghost:active:not(:disabled) {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
+
+  /** iOS search field: pill, filled, no border. */
   .field {
-    @apply w-full rounded-xl border bg-white/80 px-3.5 py-2.5 text-sm
-           focus:border-amber-500 focus:outline-none dark:bg-stone-900/60;
-    transition-property: border-color, box-shadow, background-color;
-    transition-duration: 150ms;
+    @apply w-full rounded-[12px] px-4 py-3 text-[17px];
+    background: var(--color-card);
+    border: 1px solid transparent;
+    transition: border-color 150ms;
   }
 
   .field:focus {
-    box-shadow: 0 0 0 4px oklch(0.77 0.16 70 / 0.14);
+    outline: none;
+    border-color: var(--color-ios-blue);
+  }
+
+  /** Segmented control — the iOS filter primitive. */
+  .segmented {
+    @apply inline-flex gap-0.5 rounded-[10px] p-0.5;
+    background: color-mix(in oklab, var(--color-ios-gray) 20%, transparent);
+  }
+
+  .segment {
+    @apply rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium;
+    color: var(--color-label-2);
+    transition: background-color 150ms, color 150ms;
+  }
+
+  .segment[aria-pressed="true"] {
+    background: var(--color-card);
+    @apply font-semibold text-black shadow-sm dark:text-white;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
-    transition-property: background-color, border-color, color;
-    transition-duration: 150ms;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium;
   }
 
-  /* Number columns only line up with tabular figures. */
   .tnum {
     font-variant-numeric: tabular-nums;
   }
 
-  /* The label above a section — small, spaced, quiet. */
-  .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500 dark:text-stone-400;
+  /** Secondary text, in iOS's true grey rather than a tinted one. */
+  .muted {
+    color: var(--color-label-2);
+  }
+
+  .muted-more {
+    color: var(--color-label-3);
   }
 }
 
@@ -186,26 +255,18 @@
     scrollbar-width: thin;
   }
 
-  /* The vertical thread a timeline hangs from. */
-  .rail {
-    @apply absolute left-[15px] top-1 bottom-0 w-px;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      var(--color-stone-300) 8%,
-      var(--color-stone-300) 92%,
-      transparent
-    );
+  .scrollbar-none {
+    scrollbar-width: none;
   }
 
-  .dark .rail {
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      var(--color-stone-700) 8%,
-      var(--color-stone-700) 92%,
-      transparent
-    );
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The vertical thread a timeline hangs from. */
+  .rail {
+    @apply absolute left-[19px] top-2 bottom-2 w-[2px] rounded-full;
+    background: color-mix(in oklab, var(--color-ios-gray) 25%, transparent);
   }
 }
 
@@ -216,7 +277,7 @@
 }
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -225,31 +286,28 @@
 }
 
 .spinner {
-  @apply rounded-full border-2 border-stone-200 dark:border-stone-700;
+  @apply rounded-full border-2;
+  border-color: color-mix(in oklab, var(--color-ios-gray) 30%, transparent);
+  border-top-color: currentColor;
   animation: spin 0.7s linear infinite;
-  border-top-color: var(--color-amber-500);
 }
 
 /* Entrance for list items. `--i` staggers them; set it inline per row. */
 .rise {
-  animation: rise 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  animation-delay: calc(var(--i, 0) * 40ms);
+  animation: rise 340ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
 }
 
-/* A skeleton that sweeps, rather than a grey block that throbs. */
 .skeleton {
-  @apply relative overflow-hidden rounded-xl bg-stone-200/60 dark:bg-stone-800/60;
+  @apply relative overflow-hidden rounded-[12px];
+  background: color-mix(in oklab, var(--color-ios-gray) 18%, transparent);
 }
 
 .skeleton::after {
   content: "";
   @apply absolute inset-0 -translate-x-full;
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.35), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, white 30%, transparent), transparent);
   animation: shimmer 1.6s infinite;
-}
-
-.dark .skeleton::after {
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.06), transparent);
 }
 
 /*

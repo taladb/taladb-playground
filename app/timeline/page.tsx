@@ -85,7 +85,7 @@ function Timeline() {
         ))}
       </div>
 
-      <p className="text-xs text-stone-500 dark:text-stone-400" aria-live="polite">
+      <p className="text-xs muted" aria-live="polite">
         {loading ? 'Reading…' : `Showing ${plural(data.length, 'memory', 'memories')}`}
       </p>
 
@@ -100,7 +100,13 @@ function Timeline() {
         <div className="space-y-10">
           {[...byYear.entries()].map(([year, rows]) => (
             <section key={year}>
-              <h2 className="tnum sticky top-14 z-20 -mx-1 mb-3 w-fit rounded-lg bg-stone-50/85 px-2 py-1 font-serif text-sm font-semibold text-stone-400 backdrop-blur-sm dark:bg-stone-950/85 dark:text-stone-500">
+              <h2
+                className="tnum sticky top-14 z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
+                style={{
+                  background: 'color-mix(in oklab, var(--color-group) 75%, transparent)',
+                  color: 'var(--color-label-2)',
+                }}
+              >
                 {year}
               </h2>
               <MemoryThread>
@@ -135,11 +141,12 @@ function Filter({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`chip shrink-0 ${
+      className="chip shrink-0 font-semibold"
+      style={
         active
-          ? 'border-stone-900 bg-stone-900 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-stone-950'
-          : 'border-stone-200 bg-white/70 text-stone-600 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900/60 dark:text-stone-400 dark:hover:border-stone-600'
-      }`}
+          ? { background: 'var(--color-ios-blue)', color: '#fff' }
+          : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
+      }
     >
       {children}
     </button>
@@ -152,10 +159,10 @@ function Empty({ type, onClear }: { type: MemoryType | null; onClear: () => void
       <span className="text-3xl" aria-hidden>
         {type ? MEMORY_ICON[type] : '🕰️'}
       </span>
-      <p className="font-serif text-lg font-medium">
+      <p className="text-[17px] font-semibold">
         {type ? `No ${MEMORY_LABEL[type].toLowerCase()} memories yet` : 'Nothing here yet'}
       </p>
-      <p className="max-w-sm text-sm text-stone-500 dark:text-stone-400">
+      <p className="max-w-sm text-sm muted">
         {type
           ? 'Nothing of this kind has been recorded. Try another filter, or write one.'
           : 'Once you remember something, it will appear here in order.'}

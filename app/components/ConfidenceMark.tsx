@@ -16,17 +16,17 @@ const MARKS: Record<Confidence, { glyph: string; label: string; className: strin
   confirmed: {
     glyph: '✓',
     label: 'Confirmed by you',
-    className: 'text-emerald-600 dark:text-emerald-400',
+    className: 'text-[var(--color-ios-green)]',
   },
   extracted: {
     glyph: '◐',
     label: 'Extracted from evidence',
-    className: 'text-amber-600 dark:text-amber-400',
+    className: 'text-[var(--color-ios-orange)]',
   },
   inferred: {
     glyph: '◇',
     label: 'Inferred from related information',
-    className: 'text-stone-500 dark:text-stone-400',
+    className: 'muted',
   },
 }
 

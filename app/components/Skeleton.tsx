@@ -9,8 +9,8 @@ export function MemorySkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-3" aria-hidden>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex gap-3.5">
-          <div className="skeleton h-8 w-8 shrink-0 rounded-full" />
+        <div key={i} className="flex gap-3">
+          <div className="skeleton mt-3 h-8 w-8 shrink-0 rounded-[8px]" />
           <div className="card flex-1 space-y-2.5 p-4">
             <div className="skeleton h-4" style={{ width: `${55 + ((i * 13) % 30)}%` }} />
             <div className="skeleton h-3" />

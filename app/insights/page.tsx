@@ -64,28 +64,25 @@ export default function InsightsPage() {
         <EngineBadge engine="structured" />
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="segmented">
         {(['all', ...(years.data ?? [])] as const).map((y) => (
           <button
             key={y}
             onClick={() => setYear(y as number | 'all')}
-            className={`chip ${
-              year === y
-                ? 'border-stone-900 bg-stone-900 text-white dark:border-amber-500 dark:bg-amber-500 dark:text-stone-950'
-                : 'border-stone-200 bg-white text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-400'
-            }`}
+            aria-pressed={year === y}
+            className="segment tnum"
           >
-            {y === 'all' ? 'All time' : y}
+            {y === 'all' ? 'All Time' : y}
           </button>
         ))}
       </div>
 
       <section className="card p-5">
-        <p className="text-xs text-stone-500 dark:text-stone-400">
+        <p className="text-xs muted">
           Total recorded spend {year === 'all' ? 'all time' : `in ${year}`}
         </p>
-        <p className="tnum mt-1.5 font-serif text-4xl font-semibold leading-none">{money(total)}</p>
-        <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+        <p className="tnum mt-1.5 text-[40px] font-bold leading-none tracking-[-0.022em]">{money(total)}</p>
+        <p className="mt-1 text-xs muted">
           Across {plural(byEntity.data?.length ?? 0, 'thing')} with an amount recorded.
         </p>
       </section>
@@ -98,7 +95,7 @@ export default function InsightsPage() {
             <Link
               key={row._id}
               href={`/entity/${row._id}`}
-              className="block px-5 py-3 transition-colors hover:bg-stone-50 dark:hover:bg-stone-900"
+              className="block px-5 py-3 transition-colors "
             >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="truncate text-sm">
@@ -108,25 +105,25 @@ export default function InsightsPage() {
                 <span className="tnum shrink-0 text-sm font-medium">{money(row.total)}</span>
               </div>
               <div className="mt-1.5 flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full ">
                   <div
-                    className="h-full rounded-full bg-amber-500"
+                    className="h-full rounded-full bg-[var(--color-ios-blue)]"
                     style={{ width: `${(row.total / max) * 100}%` }}
                   />
                 </div>
-                <span className="tnum w-20 shrink-0 text-right text-[11px] text-stone-400 dark:text-stone-500">
+                <span className="tnum w-20 shrink-0 text-right text-[11px] muted-more">
                   {plural(row.n, 'entry', 'entries')}
                 </span>
               </div>
             </Link>
           ))}
           {byEntity.data?.length === 0 && (
-            <p className="px-5 py-6 text-sm text-stone-500 dark:text-stone-400">
+            <p className="px-5 py-6 text-sm muted">
               Nothing recorded in this period.
             </p>
           )}
         </div>
-        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+        <p className="mt-2 text-xs muted">
           <code className="font-mono">$match</code> on the date range, then{' '}
           <code className="font-mono">$group</code> by subject with{' '}
           <code className="font-mono">$sum</code> — executed in the engine, not in JavaScript.
@@ -156,17 +153,17 @@ export default function InsightsPage() {
             <ul className="mt-3 space-y-2">
               {warranties.data?.soon.map(({ entity }) => (
                 <li key={entity._id} className="flex items-baseline justify-between gap-3 text-sm">
-                  <Link href={`/entity/${entity._id}`} className="truncate hover:text-amber-700 dark:hover:text-amber-400">
+                  <Link href={`/entity/${entity._id}`} className="truncate ">
                     <span aria-hidden>{entity.icon} </span>
                     {entity.name}
                   </Link>
-                  <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
+                  <span className="shrink-0 text-xs muted">
                     {relative(entity.warrantyExpiresAt!)}
                   </span>
                 </li>
               ))}
               {!warranties.data?.soon.length && (
-                <li className="text-sm text-stone-500 dark:text-stone-400">
+                <li className="text-sm muted">
                   Nothing expiring in the next six months.
                 </li>
               )}
@@ -178,17 +175,17 @@ export default function InsightsPage() {
             <ul className="mt-3 space-y-2">
               {warranties.data?.lapsed.map(({ entity }) => (
                 <li key={entity._id} className="flex items-baseline justify-between gap-3 text-sm">
-                  <Link href={`/entity/${entity._id}`} className="truncate hover:text-amber-700 dark:hover:text-amber-400">
+                  <Link href={`/entity/${entity._id}`} className="truncate ">
                     <span aria-hidden>{entity.icon} </span>
                     {entity.name}
                   </Link>
-                  <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400">
+                  <span className="shrink-0 text-xs muted">
                     {relative(entity.warrantyExpiresAt!)}
                   </span>
                 </li>
               ))}
               {!warranties.data?.lapsed.length && (
-                <li className="text-sm text-stone-500 dark:text-stone-400">None in the last year.</li>
+                <li className="text-sm muted">None in the last year.</li>
               )}
             </ul>
           </div>
