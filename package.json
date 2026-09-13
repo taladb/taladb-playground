@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "bun run --bun next dev",
+    "build": "bun run --bun next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "seed": "bun scripts/generate-seed.ts",

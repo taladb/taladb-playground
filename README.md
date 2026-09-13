@@ -75,6 +75,33 @@ bun run verify     # exercises every lib/ module against the real engine (see be
 Open http://localhost:3000. The corpus seeds into OPFS once on first load; every visit after that
 is a pure local read.
 
+## Deploying
+
+`vercel.json` pins the Bun runtime:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "bunVersion": "1.4.x"
+}
+```
+
+Bun is picked up as the **package manager** from `bun.lock` alone — no
+configuration, and note the preset does not detect the legacy `bun.lockb`
+format. `bunVersion` is what selects the **runtime** for Vercel Functions;
+`1.4.x` is the Zig-to-Rust rewrite, `1.x` the previous line.
+
+The `dev` and `build` scripts run `bun run --bun next …` so Next itself executes
+under Bun rather than Node. Vercel documents that as required for Next.js with
+ISR; this app has no ISR, so it is here for parity between local and deployed
+behaviour rather than out of necessity.
+
+Worth knowing before you wire up a project: almost nothing here runs on a
+server. Every route but `/entity/[id]` is static, and that one only renders the
+provider's fallback, because TalaDB opens in an effect and never during SSR. The
+runtime choice is close to cosmetic for this app — which is rather the point of
+a local-first database.
+
 ### `bun run verify`
 
 The database runs in the browser, which normally makes the data path awkward to test. But every
