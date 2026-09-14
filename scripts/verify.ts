@@ -22,6 +22,7 @@ import { locateEntity, relatedEntities, contentsOf } from '../lib/graph'
 import { classify, resolveEntity } from '../lib/retrieval'
 import { extractMemory } from '../lib/extract'
 import { exportPack } from '../lib/memorypack'
+import { createEntity } from '../lib/mutations'
 
 const SEED = join(import.meta.dirname ?? '.', '..', 'public', 'seed')
 const DB_FILE = join(import.meta.dirname ?? '.', '..', '.verify.db')
@@ -221,6 +222,38 @@ async function main() {
     new Date('2026-09-13T10:00:00Z'))
   check('movement extraction', moved.memoryType.value === 'movement', moved.memoryType.reason)
   check('movement resolves the place', moved.place?.value.slug === 'bedroom-safe', moved.place?.value.name)
+
+  console.log('\nEntity resolution survives a thin, user-created entity')
+  // A characterisation test, not a regression guard — and the distinction is
+  // worth writing down, because it was checked rather than assumed.
+  //
+  // Resolution used to accept a candidate on an absolute BM25 score, which is
+  // not portable across corpus sizes: the value moves with IDF and average
+  // document length, both corpus statistics. That breaks badly in an app that
+  // starts empty (the Android build, where the correct subject scored 0.536
+  // against a floor of 1.0 and resolved to nothing).
+  //
+  // It does *not* reproduce here. With 49 seeded entities the scores run 4–6,
+  // far above the old floor, so this check passes with or without the fix. The
+  // failure the old rule actually had in this corpus was the opposite one —
+  // "descaled the appliance" accepted four candidates that the sentence never
+  // named, including a person — which the exact-naming rule also narrows.
+  //
+  // Kept because a user-created entity resolving is worth asserting either way.
+  const kettle = await createEntity(db, {
+    entityType: 'thing',
+    name: 'Hario Kettle',
+    category: 'Kettle',
+    description: 'Gooseneck pouring kettle',
+  })
+  const thin = await extractMemory(
+    db,
+    'Descaled the kettle today for ₱350.',
+    new Date('2026-09-14T10:00:00Z'),
+  )
+  check('resolves an entity named only by its category', thin.subject?.value._id === kettle._id,
+    thin.subject ? `${thin.subject.value.name} — ${thin.subject.reason}` : 'no subject resolved')
+  check('and the amount still parses alongside it', thin.amount?.value === 350, thin.amount?.reason)
 
   console.log('\nExport')
   const pack = await exportPack(db)

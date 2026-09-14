@@ -5,6 +5,7 @@ import {
   entitiesByIds, openLoans, spendForEntity, warrantiesExpiring, warrantiesExpired,
 } from './queries'
 import { locateEntity } from './graph'
+import { namesEntity } from './extract'
 import type { Entity, MemoryRow, MemoryType } from './types'
 
 // ---------------------------------------------------------------------------
@@ -95,11 +96,13 @@ export async function resolveEntity(db: TalaDB, query: string): Promise<Entity |
   const hits = await collections(db).entities.searchText('searchText', query, 3)
   if (!hits.length) return null
 
-  // A single weak keyword overlap ("the", "my") is not a resolution. The
-  // threshold is low but non-zero on purpose: below it, answering about a
-  // specific entity would be a guess dressed as a fact.
-  const [best] = hits
-  return best.score >= 1.2 ? best.document : null
+  // BM25 ranks the candidates; it does not decide them. An absolute score floor
+  // is not portable across corpus sizes — the value moves with IDF and average
+  // document length, both corpus statistics — so acceptance is the same exact
+  // test the capture extractor uses: does the question actually name this
+  // thing? Below that, answering about a specific entity would be a guess
+  // dressed as a fact.
+  return hits.map((h) => h.document).find((e) => namesEntity(query, e)) ?? null
 }
 
 // --- ranked retrieval -------------------------------------------------------

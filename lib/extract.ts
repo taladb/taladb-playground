@@ -186,21 +186,52 @@ function extractAmount(text: string): ExtractedField<number> | null {
  * what the event happened to.
  */
 async function resolveMentions(db: TalaDB, text: string): Promise<Entity[]> {
-  const hits = await collections(db).entities.searchText('searchText', text, 8)
-  // The floor keeps a stray "the" or a shared category word from dragging in
-  // every appliance in the house.
-  return hits.filter((h) => h.score >= 1.0).map((h) => h.document)
+  // BM25 generates the candidates; it does not decide them.
+  //
+  // The earlier version filtered on an absolute score (>= 1.0), which is the
+  // one thing a BM25 score cannot support: the value moves with the corpus,
+  // because IDF and average document length are both corpus statistics. A
+  // threshold tuned against a seeded 48-entity catalogue rejects *everything*
+  // in an app that starts empty — measured, the correct subject scored 0.536
+  // and its own service provider 0.979, so a sentence naming both resolved to
+  // neither.
+  //
+  // So acceptance is an exact test instead: does the text actually name this
+  // thing? That is stable at any corpus size, and it is also what the confirm
+  // screen claims when it says "named in the text". When nothing is named the
+  // answer is no subject, and the user is asked — which beats guessing.
+  const hits = await collections(db).entities.searchText('searchText', text, 12)
+  return hits.map((h) => h.document).filter((e) => namesEntity(text, e))
 }
 
 /** Does the text name this entity closely enough to act on without asking? */
-function namesEntity(text: string, entity: Entity): boolean {
+/**
+ * Does this sentence actually refer to this entity?
+ *
+ * Matched against the fields that carry identity — the name, and the words a
+ * person uses *instead* of the name. "Changed the bicycle chain" names the
+ * Trek FX 3 by its category, which is how people actually refer to the one
+ * bicycle they own, so category counts. Description does not: it is prose, and
+ * matching on it would make every entity a candidate for every sentence.
+ *
+ * Four characters is the floor, which keeps "FX" and "3" from matching half the
+ * dictionary while still allowing "trek", "aircon" and "bicycle".
+ */
+export function namesEntity(text: string, entity: Entity): boolean {
   const lower = text.toLowerCase()
   if (lower.includes(entity.name.toLowerCase())) return true
 
-  // Fall back to the distinctive words in the name — "Trek" out of "Trek FX 3",
-  // "aircon" out of "Bedroom Aircon" — ignoring anything too short or generic.
-  const words = entity.name.toLowerCase().split(/\s+/).filter((w) => w.length >= 4)
-  return words.some((w) => lower.includes(w))
+  const identifiers = [
+    ...entity.name.split(/\s+/),
+    entity.category,
+    entity.manufacturer,
+    entity.model,
+    entity.serialNumber,
+  ]
+
+  return identifiers.some(
+    (word) => typeof word === 'string' && word.length >= 4 && lower.includes(word.toLowerCase()),
+  )
 }
 
 const ACTOR_TYPES = new Set(['person', 'organization'])
