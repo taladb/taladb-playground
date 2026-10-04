@@ -158,8 +158,14 @@ async function rank(db: TalaDB, query: string, filter?: Record<string, unknown>)
     // record — which index path was taken, and how many distances it actually
     // computed. `hybridSearch` doesn't surface that, and it is the single most
     // interesting number in the whole pipeline.
+    //
+    // Asked for one hit, because the hits are thrown away and each one drags a
+    // 384-float vector across the worker boundary: at TOP_K the probe alone was
+    // ~70 KB of JSON per question. The record does not depend on k — an exact
+    // scan computes every distance whatever k is, and a graph walk is sized by
+    // efSearch = max(100, 4k), which is the same 100 for k = 1 as for k = 8.
     memories
-      .searchVectors('embedding', vector, TOP_K, filter as never)
+      .searchVectors('embedding', vector, 1, filter as never)
       .catch(() => null),
   ])
 
@@ -331,7 +337,6 @@ async function answerLastEvent(
   db: TalaDB,
   entity: Entity | null,
   query: string,
-  evidence: Evidence[],
 ): Promise<Answer | null> {
   if (!entity) return null
 
@@ -361,7 +366,6 @@ async function answerLastEvent(
   // rather than inventing a date.
   if (!latest) return null
 
-  const top = evidence[0]
   return {
     headline: when(latest.occurredAt),
     lines: [
@@ -374,7 +378,6 @@ async function answerLastEvent(
     method: types
       ? 'Newest memory of that kind for this thing — indexed $match, sorted by date.'
       : 'Newest memory for this thing — indexed $match, sorted by date.',
-    ...(top ? {} : {}),
   }
 }
 
@@ -422,13 +425,23 @@ export async function recall(db: TalaDB, query: string): Promise<RecallResult> {
 
   const intent = classify(trimmed)
 
+  // Two independent tracks, run side by side: the structured one (resolve the
+  // entity, then compute the exact answer) and the ranked one (embed the query,
+  // then hybrid search). Neither needs the other except for decisions, whose
+  // answer is chosen from the ranked evidence. In the browser every step is a
+  // round trip to the database worker, and the embedder is the slowest step of
+  // all, so running them one after another made the question wait for the sum.
+  const retrievalStart = performance.now()
+  const rankedPromise = rank(db, trimmed).then((ranked) => ({
+    ranked,
+    retrievalMs: performance.now() - retrievalStart,
+  }))
+  // Awaited below; this only stops a failure from being reported as unhandled
+  // while the structured track is still running (or after it has thrown).
+  rankedPromise.catch(() => {})
+
   const structuredStart = performance.now()
   const entity = await resolveEntity(db, trimmed)
-  const structuredMs = performance.now() - structuredStart
-
-  const retrievalStart = performance.now()
-  const ranked = await rank(db, trimmed)
-  const retrievalMs = performance.now() - retrievalStart
 
   let answer: Answer | null = null
   switch (intent) {
@@ -445,14 +458,17 @@ export async function recall(db: TalaDB, query: string): Promise<RecallResult> {
       answer = await answerWarranty(db, entity)
       break
     case 'last_event':
-      answer = await answerLastEvent(db, entity, trimmed, ranked.evidence)
+      answer = await answerLastEvent(db, entity, trimmed)
       break
     case 'decision':
-      answer = await answerDecision(db, entity, ranked.evidence)
+      answer = await answerDecision(db, entity, (await rankedPromise).ranked.evidence)
       break
     case 'open':
       break
   }
+  const structuredMs = performance.now() - structuredStart
+
+  const { ranked, retrievalMs } = await rankedPromise
 
   const engines: Engine[] = answer
     ? [answer.engine, ...ranked.engines.filter((e) => e !== answer!.engine)]
