@@ -83,6 +83,17 @@
   }
 }
 
+/* Height of the sticky chrome at the top of the page — the Kepta banner (h-10)
+   plus, on desktop, the nav bar. Sticky elements below it offset by this. */
+:root {
+  --chrome-top: 2.5rem;
+}
+@media (min-width: 48rem) {
+  :root {
+    --chrome-top: 6rem;
+  }
+}
+
 @layer base {
   html {
     font-family: var(--font-sans);

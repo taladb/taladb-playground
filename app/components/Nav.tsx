@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon, type IconName } from './Icon'
+import { AppBanner } from './AppBanner'
 
 const LINKS: Array<{ href: string; label: string; icon: IconName }> = [
   { href: '/', label: 'Home', icon: 'home' },
@@ -18,59 +19,65 @@ export function Nav() {
 
   return (
     <>
-      {/* Desktop: a translucent bar that the content scrolls under. */}
-      <header
-        className="sticky top-0 z-30 hidden backdrop-blur-xl md:block"
-        style={{
-          background: 'color-mix(in oklab, var(--color-group) 82%, transparent)',
-          boxShadow: 'inset 0 -0.5px 0 var(--color-separator)',
-        }}
-      >
-        <div className="mx-auto flex max-w-5xl items-center gap-1 px-6 py-2.5">
-          <Link href="/" className="mr-5 flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
-            <Mark />
-            Keepsake
-          </Link>
+      {/* One sticky block, so the banner and the desktop bar stay stacked. Its
+          height is `--chrome-top` in globals.css. */}
+      <div className="sticky top-0 z-30">
+        <AppBanner />
 
-          <nav aria-label="Main" className="flex items-center gap-0.5">
-            {LINKS.map((link) => (
+        {/* Desktop: a translucent bar that the content scrolls under. */}
+        <header
+          className="hidden backdrop-blur-xl md:block"
+          style={{
+            background: 'color-mix(in oklab, var(--color-group) 82%, transparent)',
+            boxShadow: 'inset 0 -0.5px 0 var(--color-separator)',
+          }}
+        >
+          <div className="mx-auto flex max-w-5xl items-center gap-1 px-6 py-2.5">
+            <Link href="/" className="mr-5 flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
+              <Mark />
+              Keepsake
+            </Link>
+
+            <nav aria-label="Main" className="flex items-center gap-0.5">
+              {LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive(link.href) ? 'page' : undefined}
+                  className="rounded-[10px] px-3 py-1.5 text-[14px] font-medium transition-colors"
+                  style={
+                    isActive(link.href)
+                      ? { background: 'var(--color-card)', color: 'var(--color-ios-blue)' }
+                      : { color: 'var(--color-label-2)' }
+                  }
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Link href="/capture" className="btn-primary px-4 py-2 text-[15px]">
+                <Icon name="plus" className="h-4 w-4" strokeWidth={2.5} />
+                Remember
+              </Link>
               <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive(link.href) ? 'page' : undefined}
-                className="rounded-[10px] px-3 py-1.5 text-[14px] font-medium transition-colors"
+                href="/settings"
+                aria-label="Settings"
+                aria-current={isActive('/settings') ? 'page' : undefined}
+                className="rounded-[10px] p-2 transition-colors"
                 style={
-                  isActive(link.href)
+                  isActive('/settings')
                     ? { background: 'var(--color-card)', color: 'var(--color-ios-blue)' }
                     : { color: 'var(--color-label-2)' }
                 }
               >
-                {link.label}
+                <Icon name="gear" className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </Link>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2">
-            <Link href="/capture" className="btn-primary px-4 py-2 text-[15px]">
-              <Icon name="plus" className="h-4 w-4" strokeWidth={2.5} />
-              Remember
-            </Link>
-            <Link
-              href="/settings"
-              aria-label="Settings"
-              aria-current={isActive('/settings') ? 'page' : undefined}
-              className="rounded-[10px] p-2 transition-colors"
-              style={
-                isActive('/settings')
-                  ? { background: 'var(--color-card)', color: 'var(--color-ios-blue)' }
-                  : { color: 'var(--color-label-2)' }
-              }
-            >
-              <Icon name="gear" className="h-[18px] w-[18px]" strokeWidth={1.8} />
-            </Link>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* Mobile: a real iOS tab bar. */}
       <nav

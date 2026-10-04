@@ -43,6 +43,7 @@ const P: Record<string, string> = {
   chevron: 'M9 6l6 6-6 6',
   box: 'M3 7h18v13H3z M3 7l2-4h14l2 4 M12 7v13',
   sparkle: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z',
+  phone: 'M7 2h10a1 1 0 011 1v18a1 1 0 01-1 1H7a1 1 0 01-1-1V3a1 1 0 011-1z M11 18h2',
 }
 
 export type IconName = keyof typeof P | MemoryType | EntityType
