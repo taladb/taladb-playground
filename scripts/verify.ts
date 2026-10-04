@@ -21,11 +21,12 @@ import {
 import { locateEntity, relatedEntities, contentsOf } from '../lib/graph'
 import { classify, resolveEntity } from '../lib/retrieval'
 import { extractMemory } from '../lib/extract'
-import { exportPack } from '../lib/memorypack'
+import { exportPack, importPack } from '../lib/memorypack'
 import { createEntity } from '../lib/mutations'
 
 const SEED = join(import.meta.dirname ?? '.', '..', 'public', 'seed')
 const DB_FILE = join(import.meta.dirname ?? '.', '..', '.verify.db')
+const IMPORT_FILE = join(import.meta.dirname ?? '.', '..', '.verify-import.db')
 
 let failures = 0
 
@@ -106,6 +107,8 @@ async function main() {
   const counts = await stats(db)
   check('corpus counts', counts.memoryCount > 300 && counts.entityCount > 40,
     `${counts.entityCount} entities, ${counts.memoryCount} memories, ${counts.embedded} embedded`)
+  check('embedded count read from the vector index matches a full count',
+    counts.embedded === await collections(db).memories.count({ embedding: { $exists: true } } as never))
 
   const bike = await collections(db).entities.findOne({ slug: 'trek-fx3' })
   const drill = await collections(db).entities.findOne({ slug: 'power-drill' })
@@ -261,6 +264,24 @@ async function main() {
   check('pack carries rebuild metadata', pack.embedding.model.includes('MiniLM'),
     `${pack.embedding.model}, ${pack.embedding.dimensions}d`)
   check('pack counts match', pack.counts.memories === counts.memoryCount)
+
+  console.log('\nImport')
+  await rm(IMPORT_FILE, { force: true, recursive: true }).catch(() => {})
+  const fresh = await openDB(IMPORT_FILE)
+  const roundTrip = JSON.parse(JSON.stringify(pack))
+  const t1 = performance.now()
+  const first = await importPack(fresh, roundTrip)
+  check('import into an empty device writes everything',
+    first.memories === pack.counts.memories && first.entities === pack.counts.entities &&
+      first.relations === pack.counts.relations && first.skipped === 0,
+    `${first.entities} entities, ${first.memories} memories, ${first.relations} relations in ${(performance.now() - t1).toFixed(0)} ms`)
+  const again = await importPack(fresh, roundTrip)
+  check('re-importing the same pack skips every row',
+    again.entities + again.memories + again.relations === 0 &&
+      again.skipped === pack.counts.entities + pack.counts.memories + pack.counts.relations,
+    `${again.skipped} skipped`)
+  await fresh.close()
+  await rm(IMPORT_FILE, { force: true, recursive: true }).catch(() => {})
 
   await db.close()
   await rm(DB_FILE, { force: true, recursive: true }).catch(() => {})

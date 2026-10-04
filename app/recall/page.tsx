@@ -305,7 +305,9 @@ function Inspector({ result }: { result: RecallResult }) {
     ],
     ['Keyword (BM25)', `${result.evidence.filter((e) => e.textRank !== null).length} hits`, true],
     [
-      'Vector (HNSW)',
+      // Named from the execution record: at this corpus size the index is an
+      // exact scan, and calling it HNSW would claim a graph that isn't there.
+      result.execution?.path === 'hnsw' ? 'Vector (HNSW)' : 'Vector (exact)',
       result.semanticUsed
         ? `${result.evidence.filter((e) => e.vectorRank !== null).length} hits`
         : 'off',

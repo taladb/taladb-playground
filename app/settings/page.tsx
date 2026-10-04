@@ -2,7 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react'
 import { useTalaDB } from '@taladb/react'
-import type { TalaDB, VectorIndexStatus } from 'taladb'
+import type { TalaDB, VectorCacheStats, VectorIndexStatus } from 'taladb'
 import { collections, VECTOR_DIM } from '@/lib/schema'
 import { stats } from '@/lib/queries'
 import { backfillEmbeddings } from '@/lib/mutations'
@@ -168,6 +168,13 @@ function VectorPanel({ db }: { db: TalaDB }) {
     return memories.vectorIndexStatus('embedding')
   }, [db, nonce])
 
+  // One budget covers every decoded vector and graph in the database (0.12),
+  // sized from the device's memory hint and shrunk under memory pressure.
+  const cache = useAsync<VectorCacheStats | null>(
+    () => collections(db).memories.vectorCacheStats().catch(() => null),
+    [db, nonce],
+  )
+
   async function doRebuild() {
     setBusy('rebuild')
     abort.current = new AbortController()
@@ -248,6 +255,18 @@ function VectorPanel({ db }: { db: TalaDB }) {
         />
       )}
 
+      {cache.data && (
+        <div className="mt-4 border-t pt-4">
+          <Rows
+            rows={[
+              ['Cache budget', `${mib(cache.data.budgetBytes)} (${cache.data.policy})`],
+              ['Decoded and held', mib(cache.data.retainedBytes)],
+              ['Memory pressure', cache.data.pressure],
+            ]}
+          />
+        </div>
+      )}
+
       {!s && !status.loading && (
         <p className="text-sm muted">
           No vector index yet — it is created once memories have embeddings.
@@ -309,6 +328,8 @@ function VectorPanel({ db }: { db: TalaDB }) {
     </Panel>
   )
 }
+
+const mib = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(bytes < 1024 * 1024 ? 2 : 1)} MiB`
 
 // --- document indexes -------------------------------------------------------
 

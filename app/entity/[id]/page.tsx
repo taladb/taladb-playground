@@ -12,7 +12,7 @@ import { ENTITY_LABEL, fullDate, money, plural, relative, yearOf } from '@/lib/f
 import { MemoryCard, MemoryThread } from '@/app/components/MemoryCard'
 import { MemorySkeleton, CardSkeleton, LoadingAnnounce } from '@/app/components/Skeleton'
 import { EngineBadge } from '@/app/components/EngineBadge'
-import type { Memory, MemoryRow } from '@/lib/types'
+import type { Entity, Memory, MemoryRow } from '@/lib/types'
 
 type Tab = 'timeline' | 'info' | 'connections'
 
@@ -176,7 +176,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {tab === 'timeline' && <Timeline memories={timeline} loading={loading} />}
-      {tab === 'info' && <Details entityId={id} />}
+      {tab === 'info' && <Details entity={e} />}
       {tab === 'connections' && <Connections entityId={id} />}
     </div>
   )
@@ -239,11 +239,9 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
   )
 }
 
-function Details({ entityId }: { entityId: string }) {
-  const db = useTalaDB()
-  const entity = useAsync(() => entityById(db, entityId), [db, entityId])
-  const e = entity.data
-  if (!e) return null
+/** Takes the entity the page already read, rather than a second round trip
+ *  for the same row every time the tab opens. */
+function Details({ entity: e }: { entity: Entity }) {
 
   const rows: Array<[string, string]> = [
     ...(e.manufacturer ? [['Manufacturer', e.manufacturer] as [string, string]] : []),

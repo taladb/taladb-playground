@@ -208,15 +208,17 @@ export async function openLoans(db: TalaDB): Promise<OpenLoan[]> {
       NEWEST_FIRST,
       WITHOUT_EMBEDDING,
     ]),
-    memories.aggregate<MemoryRow>([
+    // Only the latest return per thing matters, so the engine works that out
+    // and sends one small row per subject instead of every return's text.
+    memories.aggregate<{ _id: string; latest: number }>([
       { $match: { memoryType: 'return' } as never },
-      WITHOUT_EMBEDDING,
+      { $group: { _id: '$subjectId', latest: { $max: '$occurredAt' } } },
     ]),
   ])
 
+  const lastReturn = new Map(returns.map((r) => [r._id, r.latest]))
   const open = loans.filter(
-    (loan) =>
-      !returns.some((r) => r.subjectId === loan.subjectId && r.occurredAt >= loan.occurredAt),
+    (loan) => !(loan.subjectId && (lastReturn.get(loan.subjectId) ?? -Infinity) >= loan.occurredAt),
   )
   if (!open.length) return []
 
@@ -306,7 +308,25 @@ export async function stats(db: TalaDB) {
     memories.count(),
     relations.count(),
     attachments.count(),
-    memories.count({ embedding: { $exists: true } } as never),
+    embeddedCount(db),
   ])
   return { entityCount, memoryCount, relationCount, attachmentCount, embedded }
+}
+
+/**
+ * How many memories carry a vector.
+ *
+ * The vector index already keeps this number. `$exists` has no index to use, so
+ * counting it decodes every memory, vector and all — measured on the seeded
+ * corpus at 3 ms against 0.02 ms for the index status, and it was 99% of the
+ * home screen's `stats()`. The count is only the fallback for a database that
+ * has no vector index yet.
+ */
+async function embeddedCount(db: TalaDB): Promise<number> {
+  const { memories } = collections(db)
+  const indexes = await memories.listIndexes()
+  if (indexes.vector.includes('embedding')) {
+    return (await memories.vectorIndexStatus('embedding')).totalVectors
+  }
+  return memories.count({ embedding: { $exists: true } } as never)
 }

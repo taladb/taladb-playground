@@ -8,7 +8,7 @@ There is no account, no server and no sync. The Rust/WASM engine, the documents,
 indexes and the vector graph are all on your device, in OPFS. Close the tab and it is still yours.
 
 Built with **Next.js 16** (App Router, Turbopack) + **React 19** + **Tailwind v4**, on
-[**TalaDB 0.11.4**](https://github.com/taladb/taladb). Package manager and scripts run on **Bun**.
+[**TalaDB 0.12.0**](https://github.com/taladb/taladb). Package manager and scripts run on **Bun**.
 
 ---
 
@@ -130,6 +130,17 @@ keyword search never returned, and that the extractor pulls `₱1,200`, `today`,
 - **Append-only where it matters.** A loan is never mutated into a return; a `return` memory closes
   it. The history stays honest, and "what have I lent out?" stays a query rather than a status
   column somebody has to remember to update.
+
+## Notes on TalaDB 0.12
+
+Nothing in the app had to change to run on 0.12.0, but two things it does are better for it:
+
+- **Stopwords are dropped from ranked text search.** Recall and capture hand whole sentences to
+  BM25 — "who has my camera?" — and every one of "who", "has" and "my" used to count as a match.
+  The engine now drops them from the query, so ranking is decided by the words that carry meaning.
+  No index rebuild was needed: filtering happens at query time.
+- **One memory budget covers every decoded vector and graph**, sized from the device's memory hint
+  and shrunk under memory pressure. `/settings` reports the budget and what is held against it.
 
 ## Notes on TalaDB 0.11
 
