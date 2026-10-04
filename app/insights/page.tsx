@@ -38,12 +38,16 @@ export default function InsightsPage() {
 
   const byType = useAsync(() => spendByType(db, window), [db, year])
 
+  // The span of the record, from the engine: one `$min`/`$max` pass that sends
+  // back a single row. A hard-coded list went stale every January.
   const years = useAsync(async () => {
-    const rows = await collections(db).memories.aggregate<{ _id: string; n: number }>([
-      { $group: { _id: '$memoryType', n: { $sum: 1 } } },
+    const [span] = await collections(db).memories.aggregate<{ first: number; last: number }>([
+      { $group: { _id: null, first: { $min: '$occurredAt' }, last: { $max: '$occurredAt' } } },
     ])
-    void rows
-    return [2023, 2024, 2025, 2026]
+    if (!span) return [new Date().getFullYear()]
+    const from = new Date(span.first).getFullYear()
+    const to = Math.max(new Date(span.last).getFullYear(), new Date().getFullYear())
+    return Array.from({ length: to - from + 1 }, (_, i) => from + i)
   }, [db])
 
   const warranties = useAsync(

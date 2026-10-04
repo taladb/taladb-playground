@@ -113,27 +113,48 @@ export async function importPack(db: TalaDB, pack: unknown): Promise<ImportRepor
   const { entities, memories, relations, attachments } = collections(db)
   const report: ImportReport = { entities: 0, memories: 0, relations: 0, attachments: 0, skipped: 0 }
 
-  // One at a time rather than `insertMany`: a pack that overlaps the existing
-  // database will hit duplicate ids, and a batch would fail whole rather than
-  // skipping the rows already present.
+  // In chunks, because every write is its own durable commit: one insert per
+  // row took 4.1 s for the 422 documents of the seeded corpus. `insertMany` is
+  // all-or-nothing, so a chunk that hits an id already on this device writes
+  // nothing — and only that chunk is retried row by row, skipping the
+  // duplicates. A fresh import never pays for the fallback; a re-import pays
+  // only for rows that fail fast.
   for (const [rows, col, key] of [
     [pack.entities, entities, 'entities'],
     [pack.memories, memories, 'memories'],
     [pack.relations, relations, 'relations'],
     [pack.attachments, attachments, 'attachments'],
   ] as const) {
-    for (const row of rows as Array<Record<string, unknown>>) {
+    const writer = col as unknown as {
+      insert: (doc: never) => Promise<string>
+      insertMany: (docs: never[]) => Promise<string[]>
+    }
+    const all = (rows ?? []) as Array<Record<string, unknown>>
+
+    for (let i = 0; i < all.length; i += IMPORT_CHUNK) {
+      const chunk = all.slice(i, i + IMPORT_CHUNK)
       try {
-        await (col as { insert: (doc: never) => Promise<string> }).insert(row as never)
-        report[key as keyof ImportReport]++
+        await writer.insertMany(chunk as never[])
+        report[key as keyof ImportReport] += chunk.length
+        continue
       } catch {
-        report.skipped++
+        // Fall through to one at a time for this chunk only.
+      }
+      for (const row of chunk) {
+        try {
+          await writer.insert(row as never)
+          report[key as keyof ImportReport]++
+        } catch {
+          report.skipped++
+        }
       }
     }
   }
 
   return report
 }
+
+const IMPORT_CHUNK = 100
 
 function isPack(value: unknown): value is MemoryPack {
   return (
