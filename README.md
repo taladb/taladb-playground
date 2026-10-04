@@ -10,6 +10,10 @@ indexes and the vector graph are all on your device, in OPFS. Close the tab and 
 Built with **Next.js 16** (App Router, Turbopack) + **React 19** + **Tailwind v4**, on
 [**TalaDB 0.12.0**](https://github.com/taladb/taladb). Package manager and scripts run on **Bun**.
 
+The web app runs on a seeded demo corpus. To keep your own memories, the same product is on
+Android as [**Kepta**](https://play.google.com/store/apps/details?id=dev.thinkgrid.kepta) —
+PIN-locked and encrypted on the phone, on the same engine. Every page here links to it.
+
 ---
 
 ## What this demo is actually arguing

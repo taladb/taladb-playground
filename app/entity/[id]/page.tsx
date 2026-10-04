@@ -220,7 +220,7 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
       {[...byYear.entries()].map(([year, rows]) => (
         <section key={year}>
           <h2
-            className="tnum sticky top-14 z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
+            className="tnum sticky top-[var(--chrome-top)] z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
             style={{
               background: 'color-mix(in oklab, var(--color-group) 75%, transparent)',
               color: 'var(--color-label-2)',

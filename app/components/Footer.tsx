@@ -1,3 +1,5 @@
+import { KEPTA_PLAY_URL } from './AppBanner'
+
 export function Footer() {
   return (
     <footer className="mx-auto max-w-5xl px-5 pb-24 pt-4 text-[12px] muted-more md:px-6 md:pb-10">
@@ -13,7 +15,12 @@ export function Footer() {
         >
           TalaDB
         </a>{' '}
-        0.11 — documents, full-text and vector search in one embedded engine.
+        0.12 — documents, full-text and vector search in one embedded engine. The same app with
+        your own data, encrypted on your phone:{' '}
+        <a href={KEPTA_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-ios-blue)' }}>
+          Kepta for Android
+        </a>
+        .
       </p>
     </footer>
   )
