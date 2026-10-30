@@ -4,10 +4,11 @@ import { Suspense, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCollection, useAggregate } from '@taladb/react'
 import { timelinePipeline } from '@/lib/queries'
-import { MEMORY_ICON, MEMORY_LABEL, plural, yearOf } from '@/lib/format'
+import { MEMORY_COLOR, MEMORY_ICON, MEMORY_LABEL, plural, yearOf } from '@/lib/format'
 import { MemoryCard, MemoryThread } from '../components/MemoryCard'
 import { MemorySkeleton, LoadingAnnounce } from '../components/Skeleton'
 import { EngineBadge } from '../components/EngineBadge'
+import { PageHeader } from '../components/PageHeader'
 import { MEMORY_TYPES, type Memory, type MemoryRow, type MemoryType } from '@/lib/types'
 
 const PAGE = 40
@@ -68,18 +69,19 @@ function Timeline() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Timeline</h1>
-        <EngineBadge engine="structured" size="xs" />
-      </div>
+      <PageHeader
+        title="Timeline"
+        description="Every memory, newest first. This list is a live query: save a memory in another tab and it appears here without a reload."
+        aside={<EngineBadge engine="structured" size="xs" />}
+      />
 
-      <div className="scrollbar-thin -mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 md:mx-0 md:flex-wrap md:px-0">
+      <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="Filter by kind">
         <Filter active={type === null} onClick={() => setParams({ type: null })}>
           Everything
         </Filter>
         {MEMORY_TYPES.map((t) => (
           <Filter key={t} active={type === t} onClick={() => setParams({ type: t === type ? null : t })}>
-            <span aria-hidden>{MEMORY_ICON[t]}</span>
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: MEMORY_COLOR[t] }} />
             {MEMORY_LABEL[t]}
           </Filter>
         ))}
@@ -101,9 +103,10 @@ function Timeline() {
           {[...byYear.entries()].map(([year, rows]) => (
             <section key={year}>
               <h2
-                className="tnum sticky top-[var(--chrome-top)] z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
+                className="tnum sticky top-[calc(var(--chrome-top)+0.5rem)] z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
                 style={{
-                  background: 'color-mix(in oklab, var(--color-group) 75%, transparent)',
+                  background: 'color-mix(in oklab, var(--color-card) 85%, transparent)',
+                  border: '1px solid var(--color-border)',
                   color: 'var(--color-label-2)',
                 }}
               >
@@ -141,12 +144,7 @@ function Filter({
     <button
       onClick={onClick}
       aria-pressed={active}
-      className="chip shrink-0 font-semibold"
-      style={
-        active
-          ? { background: 'var(--color-ios-blue)', color: '#fff' }
-          : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
-      }
+      className="pill"
     >
       {children}
     </button>

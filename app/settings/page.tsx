@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useRef, useState } from 'react'
 import { useTalaDB } from '@taladb/react'
 import type { MemoryPressure, TalaDB, VectorCacheStats, VectorIndexStatus } from 'taladb'
 import {
@@ -11,12 +11,15 @@ import { resetDemoCorpus } from '@/lib/seed'
 import { stats } from '@/lib/queries'
 import { backfillEmbeddings } from '@/lib/mutations'
 import { downloadPack, exportPack, importPack, type ImportReport } from '@/lib/memorypack'
-import {
-  embedMany, getEmbedderState, loadEmbedder, subscribeEmbedder, type EmbedderState,
-} from '@/lib/embed'
+import { embedMany, loadEmbedder, useEmbedderState } from '@/lib/embed'
 import { useAsync } from '@/lib/use-async'
 import { plural } from '@/lib/format'
 import { EngineBadge } from '../components/EngineBadge'
+import { ModelCard, modelStatusLabel } from '../components/ModelStatus'
+import { PageHeader } from '../components/PageHeader'
+import { ThemeSegmented } from '../components/ThemeToggle'
+import { ConfirmDialog } from '../components/Dialog'
+import { useToast } from '../components/Toast'
 
 /**
  * Settings, and the engine room.
@@ -33,8 +36,15 @@ export default function SettingsPage() {
   const counts = useAsync(() => stats(db), [db])
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Settings</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="Settings"
+        description="Appearance, the on-device model, and the engine room: what TalaDB actually built in this browser, and your data in and out."
+      />
+
+      <Panel title="Appearance">
+        <ThemeSegmented />
+      </Panel>
 
       <SemanticPanel db={db} embedded={counts.data?.embedded ?? 0} total={counts.data?.memoryCount ?? 0} />
       <VectorPanel db={db} />
@@ -89,10 +99,6 @@ function Rows({ rows }: { rows: Array<[string, React.ReactNode]> }) {
 
 // --- semantic ---------------------------------------------------------------
 
-function useEmbedderState(): EmbedderState {
-  return useSyncExternalStore(subscribeEmbedder, getEmbedderState, () => getEmbedderState())
-}
-
 function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; total: number }) {
   const state = useEmbedderState()
   const [backfill, setBackfill] = useState<{ done: number; total: number } | null>(null)
@@ -128,26 +134,18 @@ function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; 
         rows={[
           ['Model', <span key="m" className="font-mono text-xs">all-MiniLM-L6-v2</span>],
           ['Dimensions', VECTOR_DIM],
-          [
-            'Status',
-            state.status === 'ready'
-              ? 'Loaded and running on-device'
-              : state.status === 'loading'
-                ? `Downloading — ${state.progress}%`
-                : state.status === 'error'
-                  ? state.message
-                  : 'Not downloaded',
-          ],
+          ['Status', modelStatusLabel(state)],
           ['Memories embedded', `${embedded.toLocaleString()} / ${total.toLocaleString()}`],
         ]}
       />
 
+      {state.status !== 'ready' && (
+        <div className="mt-4">
+          <ModelCard compact />
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
-        {state.status !== 'ready' && (
-          <button onClick={() => void loadEmbedder()} className="btn-ghost text-sm">
-            Download model (~25 MB)
-          </button>
-        )}
         {missing > 0 && (
           <button onClick={() => void runBackfill()} disabled={backfilling} className="btn-ghost text-sm">
             {backfilling ? 'Embedding…' : `Embed ${plural(missing, 'remaining memory', 'remaining memories')}`}
@@ -538,12 +536,15 @@ function DataPanel({ db }: { db: TalaDB }) {
   const fileInput = useRef<HTMLInputElement>(null)
 
   const [resetDone, setResetDone] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const toast = useToast()
 
   async function doExport(includeEmbeddings: boolean) {
     setBusy(true)
     setError(null)
     try {
       downloadPack(await exportPack(db, { includeEmbeddings }))
+      toast('Export saved to your downloads')
     } catch (err) {
       setError(message(err))
     } finally {
@@ -559,10 +560,12 @@ function DataPanel({ db }: { db: TalaDB }) {
     try {
       await resetDemoCorpus(db)
       setResetDone(true)
+      toast('Sample memories restored')
     } catch (err) {
       setError(message(err))
     } finally {
       setBusy(false)
+      setConfirmReset(false)
     }
   }
 
@@ -571,7 +574,9 @@ function DataPanel({ db }: { db: TalaDB }) {
     setError(null)
     setReport(null)
     try {
-      setReport(await importPack(db, JSON.parse(await file.text())))
+      const next = await importPack(db, JSON.parse(await file.text()))
+      setReport(next)
+      toast(`Imported ${plural(next.memories, 'memory', 'memories')}`)
     } catch (err) {
       setError(message(err))
     } finally {
@@ -594,8 +599,8 @@ function DataPanel({ db }: { db: TalaDB }) {
         <button onClick={() => fileInput.current?.click()} disabled={busy} className="btn-ghost text-sm">
           Import a pack
         </button>
-        <button onClick={() => void doReset()} disabled={busy} className="btn-ghost text-sm">
-          Reset demo data
+        <button onClick={() => setConfirmReset(true)} disabled={busy} className="btn-ghost text-sm">
+          Reset sample memories
         </button>
         <input
           ref={fileInput}
@@ -631,6 +636,23 @@ function DataPanel({ db }: { db: TalaDB }) {
       )}
 
       {error && <p className="mt-3 text-xs text-[var(--color-ios-red)]">{error}</p>}
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset the sample memories?"
+        confirmLabel="Reset samples"
+        busy={busy}
+        onConfirm={() => void doReset()}
+        onClose={() => setConfirmReset(false)}
+      >
+        <p>
+          The demo household’s memories, things and connections go back to how they shipped,
+          dated up to today. Edits or deletions you made to sample memories are undone.
+        </p>
+        <p className="font-medium text-[var(--color-label)]">
+          Memories you wrote yourself are not touched.
+        </p>
+      </ConfirmDialog>
 
       <p className="mt-4 text-xs leading-relaxed muted">
         Importing the same pack twice is safe: documents keep their ids, so the second run is

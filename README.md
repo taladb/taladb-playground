@@ -53,14 +53,16 @@ Every answer and every result row carries its attribution:
 
 | Route | What it demonstrates |
 |---|---|
-| `/` **Home** | Capture-first entry; open loans and expiring warranties, both pure document queries |
+| `/` **Home** | A first-visit introduction (dismissible) that says what the app is and that the data is sample data; search and capture entry points; open loans and expiring warranties, both pure document queries |
 | `/capture` | Deterministic extraction — verb table, date parser, currency parser, BM25 entity resolution. Every field explains itself; nothing is written until you confirm |
 | `/things` | Compound `entityType + category` index; BM25 over a flattened `searchText`, so a serial number finds its thing |
 | `/entity/[id]` | Timeline via array-membership index; graph location walk; spend aggregation; one-hop relations |
-| `/recall` | **The flagship.** Classify → structured → BM25 → vector → graph, with the retrieval inspector |
+| `/memory/[id]` | One memory in full; edit its words, date or amount; delete it (its edges go with it, and a reopened loan or an earlier location comes back); "similar memories" from the stored vector, no model needed |
+| `/recall` | **The flagship — Search.** Search as you type, in four modes: *Smart* (classify → exact answer → best ranking), *Keyword* (BM25), *Semantic* (vector) and *Hybrid* (RRF). Matched words are marked, every hit shows the engine's own score and per-retriever ranks, "Why this result?" explains it from that data, a technical view reports the execution record, and a link to the search is made only when you ask for one |
+| `/how-it-works` | What runs where, what the network is and is not used for, the five ways of finding something — and live engine values for developers |
 | `/timeline` | `useAggregate` — a *live* paged pipeline, not a dead snapshot |
 | `/insights` | `$group`/`$sum` over the whole corpus by thing, by event kind, by year |
-| `/settings` | Which vector index is live and why; build an HNSW graph to measure recall against exact, then go back; simulate memory pressure on the shared cache budget; `listIndexes`, `storageInfo`, `compact`, export/import, reset the demo data |
+| `/settings` | Appearance; which vector index is live and why; build an HNSW graph to measure recall against exact, then go back; simulate memory pressure on the shared cache budget; `listIndexes`, `storageInfo`, `compact`, export/import, reset the sample memories |
 
 ## Local development
 
@@ -113,11 +115,13 @@ module under `lib/` takes a `TalaDB` handle and knows nothing about which bindin
 `scripts/verify.ts` drives the **identical code** against `@taladb/node`, seeds the shipped corpus,
 builds the same indexes, and asserts on real results: that the location walk lands on Shelf B, that
 the returned drill is not listed as lent out, that `hybridSearch` surfaces at least one document
-keyword search never returned, and that the extractor pulls `₱1,200`, `today`, `Trek FX 3` and
+keyword search never returned, and that the extractor pulls `$40`, `today`, `Trek FX 3` and
 `CycleHouse` out of one sentence. It also seeds through the same module the browser uses, so
 it checks that the corpus is dated up to today, that re-seeding leaves the visitor's own memories
 alone, and that the Settings graph experiment and memory-pressure controls do what they say.
-60 checks, no mocks.
+It covers the Search page's modes, the matched-word highlighter, editing and deleting memories
+(including the loans and locations a deletion has to put back), and that every amount is in dollars.
+91 checks, no mocks.
 
 ## How it fits together
 
@@ -129,9 +133,17 @@ alone, and that the Settings graph experiment and memory-pressure controls do wh
   FTS index and the vector index are **on the same collection**. So the vector stays, and every
   list-shaped read drops it with `$project: { embedding: 0 }`.
 - **AI is optional and the app says so.** Structured queries, BM25, timelines, aggregation and
-  export all work with no model present. The 25 MB embedding model is downloaded on demand and buys
+  export all work with no model present. The embedding model (23 MB, plus a 22 MB WebAssembly
+  runtime, both served from this app's origin) is downloaded on demand and buys
   exactly one thing: search by meaning. Enable it mid-session and your last query re-runs so you can
   watch the answer improve.
+- **What you type stays in the tab.** A search or a sentence typed on one page reaches the next
+  through an in-memory hand-off (`lib/handoff.ts`), never the URL: putting it in the query
+  string makes the App Router fetch that URL's server payload, and the words would travel with
+  it. Links to individual memories and things are not prefetched, for the same reason — the
+  ids of what a search returned are nobody else's business.
+- **Amounts are US dollars.** Every new memory is recorded in `USD`; one saved before the
+  switch keeps the currency it was written in and still displays in it.
 - **Vectors are never canonical.** They are regenerable from the memory text, which is why the
   export omits them by default and why losing them costs nothing but time.
 - **Append-only where it matters.** A loan is never mutated into a return; a `return` memory closes
@@ -143,8 +155,9 @@ alone, and that the Settings graph experiment and memory-pressure controls do wh
 The corpus is fiction written on one day, and a demo built on loans, warranties and "this year"
 goes stale from that day on. So the first visit moves every date in it — the date fields and the
 dates written in the text, together — by whole days, so that the newest memory is from this week.
-Seeded ids are derived from the corpus itself, which is what lets a re-seed (a `SEED_VERSION` bump,
-or **Reset demo data** in `/settings`) replace exactly the corpus and leave anything the visitor
+Every corpus memory also carries `sample: true` — that flag is how the app labels sample data
+and counts what the visitor wrote. Seeded ids are derived from the corpus itself, which is what lets a re-seed (a `SEED_VERSION` bump,
+or **Reset sample memories** in `/settings`) replace exactly the corpus and leave anything the visitor
 wrote.
 
 ## Notes on TalaDB 0.13

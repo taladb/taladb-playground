@@ -23,12 +23,15 @@ import {
 } from '../lib/lab'
 import {
   openLoans, spendForEntity, warrantiesExpiring, entityTimelinePipeline, stats, listEntities,
+  isSampleMemory, ownMemoryCount,
 } from '../lib/queries'
 import { locateEntity, relatedEntities, contentsOf } from '../lib/graph'
-import { classify, resolveEntity } from '../lib/retrieval'
+import { classify, ModelRequiredError, recall, resolveEntity } from '../lib/retrieval'
+import { highlight, queryTerms, termsFound } from '../lib/highlight'
+import { money } from '../lib/format'
 import { extractMemory } from '../lib/extract'
 import { exportPack, importPack } from '../lib/memorypack'
-import { createEntity, saveMemory } from '../lib/mutations'
+import { createEntity, deleteMemory, saveMemory, updateMemory } from '../lib/mutations'
 
 const SEED = join(import.meta.dirname ?? '.', '..', 'public', 'seed')
 const DB_FILE = join(import.meta.dirname ?? '.', '..', '.verify.db')
@@ -83,7 +86,7 @@ async function main() {
   check('timeline projects the vector away', !('embedding' in (timeline[0] ?? {})))
 
   const spend = await spendForEntity(db, bike!._id!)
-  check('spend aggregation', spend.total > 0, `₱${spend.total.toLocaleString()} over ${spend.n} entries`)
+  check('spend aggregation', spend.total > 0, `$${spend.total.toLocaleString()} over ${spend.n} entries`)
 
   const things = await listEntities(db, { entityType: 'thing' })
   check('compound-index browse', things.length > 15, `${things.length} things`)
@@ -219,13 +222,13 @@ async function main() {
   console.log('\nCapture extraction')
   const proposal = await extractMemory(
     db,
-    'Changed the bicycle chain today at CycleHouse for ₱1,200.',
+    'Changed the bicycle chain today at CycleHouse for $40.',
     new Date('2026-09-13T10:00:00Z'),
   )
   check('classified the event', proposal.memoryType.value === 'replacement', proposal.memoryType.reason)
   check('parsed the date', new Date(proposal.occurredAt.value).toISOString().slice(0, 10) === '2026-09-13',
     proposal.occurredAt.reason)
-  check('parsed the amount', proposal.amount?.value === 1200, proposal.amount?.reason)
+  check('parsed the amount', proposal.amount?.value === 40, proposal.amount?.reason)
   check('resolved the subject', proposal.subject?.value.slug === 'trek-fx3', proposal.subject?.value.name)
   check('resolved the provider', proposal.actor?.value.slug === 'cyclehouse', proposal.actor?.value.name)
 
@@ -259,17 +262,18 @@ async function main() {
   })
   const thin = await extractMemory(
     db,
-    'Descaled the kettle today for ₱350.',
+    'Descaled the kettle today for $12.50.',
     new Date('2026-09-14T10:00:00Z'),
   )
   check('resolves an entity named only by its category', thin.subject?.value._id === kettle._id,
     thin.subject ? `${thin.subject.value.name} — ${thin.subject.reason}` : 'no subject resolved')
-  check('and the amount still parses alongside it', thin.amount?.value === 350, thin.amount?.reason)
+  check('and the amount still parses alongside it', thin.amount?.value === 12.5, thin.amount?.reason)
 
   console.log('\nRe-seeding keeps what the visitor wrote')
   const own = await saveMemory(db, {
     memoryType: 'note', title: 'My own note', content: 'Written by the visitor, not the corpus.',
-    occurredAt: Date.now(), subject: bike, actor: null, place: null, mentioned: [],
+    // As /capture writes it: the chosen day, at 09:00.
+    occurredAt: new Date(new Date().setHours(9, 0, 0, 0)).getTime(), subject: bike, actor: null, place: null, mentioned: [],
     sourceType: 'user_entered',
   })
   const before = await collections(db).memories.count()
@@ -337,6 +341,124 @@ async function main() {
     `ef ${labAnn.efSearch}, ${labAnn.distances} distances, recall@10 ${((labAnn.recallAt10 ?? 0) * 100).toFixed(0)}%`)
   await lab.close()
   await rm(LAB_FILE, { force: true, recursive: true }).catch(() => {})
+
+  console.log('\nAmounts are US dollars')
+  const currencies = await collections(db).memories.aggregate<{ _id: string | null; n: number }>([
+    { $match: { amount: { $exists: true } } as never },
+    { $group: { _id: '$currency', n: { $sum: 1 } } },
+  ])
+  check('every corpus amount is recorded in USD', currencies.length === 1 && currencies[0]._id === 'USD',
+    currencies.map((c) => `${c._id}: ${c.n}`).join(', '))
+  check('dollars print with cents only when there are cents',
+    money(40) === '$40' && money(38.72) === '$38.72' && money(24500) === '$24,500',
+    `${money(40)}, ${money(38.72)}, ${money(24500)}`)
+  check('an amount saved in pesos before the switch still reads as pesos', money(1200, 'PHP').startsWith('₱'),
+    money(1200, 'PHP'))
+  const texts = await collections(db).memories.aggregate<{ title: string; content: string }>([
+    { $project: { _id: 0, title: 1, content: 1 } },
+  ])
+  check('no peso sign is left in the memory text', !texts.some((m) => `${m.title} ${m.content}`.includes('₱')))
+
+  console.log('\nSearch modes (the /recall page)')
+  const kw = await recall(db, 'chain replaced', { mode: 'keyword' })
+  check('keyword mode ranks by BM25 alone, with no answer step',
+    kw.ranker === 'keyword' && kw.answer === null && kw.evidence.length > 0 &&
+      kw.evidence.every((e, i) => e.scoreKind === 'bm25' && e.textRank === i && e.vectorRank === null),
+    `${kw.evidence.length} hits, top score ${kw.evidence[0]?.score.toFixed(2)}`)
+  check('BM25 scores come back in descending order',
+    kw.evidence.every((e, i, all) => i === 0 || all[i - 1].score >= e.score))
+  const auto = await recall(db, 'who has my camera?')
+  check('smart mode still answers exactly, ranking by keyword without the model',
+    auto.mode === 'auto' && auto.ranker === 'keyword' && auto.answer?.engine === 'structured')
+  let refused = false
+  try {
+    await recall(db, 'clicking noise', { mode: 'semantic' })
+  } catch (err) {
+    refused = err instanceof ModelRequiredError
+  }
+  check('semantic mode refuses rather than downloading the model on its own', refused)
+
+  console.log('\nMatched-term highlighting')
+  const terms = queryTerms('Where is my drill? The clicking noise')
+  check('query terms drop stopwords', terms.join(',') === 'drill,clicking,noise', terms.join(','))
+  const marked = highlight('The drill clicks; drills are noisy. Chain changed.', [...terms, 'chain'])
+  check('highlight marks words sharing a stem, and only those',
+    marked.filter((m) => m.hit).map((m) => m.text).join(',') === 'drill,clicks,drills,Chain',
+    marked.filter((m) => m.hit).map((m) => m.text).join(','))
+  check('highlighting keeps the text intact', marked.map((m) => m.text).join('') === 'The drill clicks; drills are noisy. Chain changed.')
+  check('terms found reports which words a result shares', termsFound(['A loud rattle'], ['clicking', 'rattle']).join() === 'rattle')
+
+  console.log('\nSample memories are told apart from the visitor\'s own')
+  const allRows = await collections(db).memories.aggregate<{ _id: string; sample?: true }>([
+    { $project: { _id: 1, sample: 1 } },
+  ])
+  const mine = allRows.filter((m) => !isSampleMemory(m)).map((m) => m._id)
+  check('every corpus memory reads as sample, every saved one as the visitor\'s',
+    mine.length === 1 && mine[0] === own, `${allRows.length - mine.length} sample, ${mine.length} own`)
+
+  check('the own-memory count is the engine\'s, and agrees', (await ownMemoryCount(db)) === 1)
+  const flagged = await collections(db).memories.findOne({ _id: allRows.find((m) => m._id !== own)!._id } as never)
+  check('the sample flag survives the collection schema', flagged?.sample === true)
+
+  console.log('\nEditing a memory')
+  const [target] = await collections(db).memories.aggregate<{ _id: string; title: string; amount?: number }>([
+    { $match: { memoryType: 'maintenance', amount: { $exists: true } } as never },
+    { $limit: 1 },
+    { $project: { _id: 1, title: 1, amount: 1 } },
+  ])
+  const embeddedBefore = (await stats(db)).embedded
+  await updateMemory(db, target._id, {
+    title: target.title, content: 'Rewritten with the word zeppelin in it.', occurredAt: Date.now() - 86_400_000, amount: null,
+  })
+  const edited = await collections(db).memories.findOne({ _id: target._id } as never)
+  check('edit writes the new text and date', edited?.content.includes('zeppelin') === true)
+  check('clearing the amount removes it, currency too', edited?.amount === undefined && edited?.currency === undefined)
+  check('changed text without the model drops the stale vector', edited?.embedding === undefined)
+  const embeddedAfter = (await stats(db)).embedded
+  check('and the vector index lets go of it', embeddedAfter === embeddedBefore - 1,
+    `${embeddedBefore} → ${embeddedAfter} indexed`)
+  const zeppelin = await collections(db).memories.searchText('content', 'zeppelin', 3)
+  check('the full-text index sees the edit at once', zeppelin[0]?.document._id === target._id)
+  let rejected = false
+  try {
+    await updateMemory(db, target._id, { title: '  ', content: 'x', occurredAt: Date.now(), amount: null })
+  } catch {
+    rejected = true
+  }
+  check('an empty title is refused', rejected)
+
+  console.log('\nDeleting a memory')
+  await deleteMemory(db, own)
+  check('a deleted memory is gone', !(await collections(db).memories.findOne({ _id: own } as never)))
+
+  const drillBefore = await locateEntity(db, drill!._id!)
+  const places = await listEntities(db, { entityType: 'place' })
+  const elsewhere = places.find((p) => !drillBefore?.path.some((q) => q._id === p._id))!
+  const move = await saveMemory(db, {
+    memoryType: 'movement', title: 'Drill moved for a test', content: 'Moved it.', occurredAt: Date.now(),
+    subject: drill, actor: null, place: elsewhere, mentioned: [], sourceType: 'user_entered',
+  })
+  const relocated = await locateEntity(db, drill!._id!)
+  check('saving a move relocates the thing', relocated?.path.at(-1)?._id === elsewhere._id, relocated?.path.map((p) => p.name).join(' → '))
+  await deleteMemory(db, move)
+  const restored = await locateEntity(db, drill!._id!)
+  check('deleting the move puts it back where it was',
+    restored?.path.map((p) => p._id).join() === drillBefore?.path.map((p) => p._id).join(),
+    restored?.path.map((p) => p.name).join(' → '))
+  check('and removes the edge the move asserted',
+    (await collections(db).relations.count({ memoryId: move } as never)) === 0)
+
+  const [drillReturn] = await collections(db).memories.aggregate<{ _id: string; actorId?: string }>([
+    { $match: { subjectId: drill!._id!, memoryType: 'return' } as never },
+    { $sort: { occurredAt: -1 } },
+    { $limit: 1 },
+    { $project: { _id: 1, actorId: 1 } },
+  ])
+  await deleteMemory(db, drillReturn._id)
+  const reopened = (await openLoans(db)).find((l) => l.entity?._id === drill!._id)
+  check('deleting a return reopens the loan it closed', !!reopened, reopened ? `with ${reopened.borrower?.name}` : '')
+  check('and restores the live "borrowed by" edge',
+    !!(await collections(db).relations.findOne({ sourceId: drill!._id!, relationType: 'borrowed_by' } as never)))
 
   await db.close()
   await rm(DB_FILE, { force: true, recursive: true }).catch(() => {})

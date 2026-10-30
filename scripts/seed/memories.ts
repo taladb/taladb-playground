@@ -39,8 +39,8 @@ export const MEMORIES: SeedMemory[] = [
   // --- Bicycle: the flagship timeline -------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the Trek FX 3', occurredAt: '2024-11-04',
-    subjectSlug: 'trek-fx3', placeSlug: 'garage', amount: 42000,
-    content: 'Picked up the Trek FX 3 Disc in matte blue from CycleHouse. Paid ₱42,000 including a rack and lights. Frame size 54 cm. Kept the receipt and the warranty card.',
+    subjectSlug: 'trek-fx3', placeSlug: 'garage', amount: 1050,
+    content: 'Picked up the Trek FX 3 Disc in matte blue from CycleHouse. Paid $1,050 including a rack and lights. Frame size 54 cm. Kept the receipt and the warranty card.',
     alsoSlugs: ['cyclehouse'], sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
@@ -50,8 +50,8 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'replacement', title: 'Front tyre replaced', occurredAt: '2025-01-17',
-    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 1450,
-    content: 'Sidewall on the front tyre had a cut deep enough to see the casing. Replaced with a Schwalbe Marathon 700x35c. ₱1,450 fitted.',
+    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 45,
+    content: 'Sidewall on the front tyre had a cut deep enough to see the casing. Replaced with a Schwalbe Marathon 700x35c. $45 fitted.',
   },
   {
     memoryType: 'observation', title: 'Rattle from the back when climbing', occurredAt: '2025-04-28',
@@ -61,14 +61,14 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'repair', title: 'Rear derailleur hanger straightened', occurredAt: '2025-05-03',
-    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 800,
-    content: 'CycleHouse found the derailleur hanger was bent — probably from when the bike fell over in the garage. They straightened it on an alignment gauge and reindexed the gears. The noise under load is gone. ₱800.',
+    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 25,
+    content: 'CycleHouse found the derailleur hanger was bent — probably from when the bike fell over in the garage. They straightened it on an alignment gauge and reindexed the gears. The noise under load is gone. $25.',
     tags: ['symptom-resolved'],
   },
   {
     memoryType: 'replacement', title: 'Chain replaced', occurredAt: '2026-05-14',
-    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 1200,
-    content: 'Chain measured past 0.75 on the wear gauge so CycleHouse swapped it for a new Shimano CN-HG54. Cassette still within tolerance and was left alone. ₱1,200 including labour and a degrease.',
+    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 40,
+    content: 'Chain measured past 0.75 on the wear gauge so CycleHouse swapped it for a new Shimano CN-HG54. Cassette still within tolerance and was left alone. $40 including labour and a degrease.',
     sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
@@ -83,15 +83,15 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'maintenance', title: 'Brake pads replaced', occurredAt: '2026-09-07',
-    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 950,
-    content: 'Rear pads were down to the wear line, which explains what Alex felt. Both sets replaced with Shimano resin pads and the rotors cleaned. ₱950.',
+    subjectSlug: 'trek-fx3', alsoSlugs: ['cyclehouse'], amount: 35,
+    content: 'Rear pads were down to the wear line, which explains what Alex felt. Both sets replaced with Shimano resin pads and the rotors cleaned. $35.',
   },
 
   // --- Laptop --------------------------------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the MacBook Pro', occurredAt: '2024-02-18',
-    subjectSlug: 'macbook-pro', alsoSlugs: ['apple-greenbelt'], amount: 134900,
-    content: 'MacBook Pro 14-inch, M3 Pro, 18 GB memory, 512 GB SSD from Apple Store Greenbelt. Serial number C02XK9PLQ6NY. Added AppleCare+ which runs to February 2027. Total ₱134,900.',
+    subjectSlug: 'macbook-pro', alsoSlugs: ['apple-greenbelt'], amount: 2278,
+    content: 'MacBook Pro 14-inch, M3 Pro, 18 GB memory, 512 GB SSD from Apple Store Greenbelt. Serial number C02XK9PLQ6NY. Added AppleCare+ which runs to February 2027. Total $2,278.',
     sourceType: 'document_extracted', confidence: 'confirmed', tags: ['work'],
   },
   {
@@ -119,14 +119,14 @@ export const MEMORIES: SeedMemory[] = [
   // --- Camera: the open loan ----------------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the Sony A6400', occurredAt: '2023-08-12',
-    subjectSlug: 'sony-a6400', amount: 58000,
-    content: 'Sony A6400 body with the 18-105mm f/4 G kit lens. ₱58,000. Serial SN4471902. Came with one NP-FW50 battery; bought a second the same week.',
+    subjectSlug: 'sony-a6400', amount: 1300,
+    content: 'Sony A6400 body with the 18-105mm f/4 G kit lens. $1,300. Serial SN4471902. Came with one NP-FW50 battery; bought a second the same week.',
     sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
     memoryType: 'purchase', title: 'Spare battery and memory card', occurredAt: '2023-08-19',
-    subjectSlug: 'sony-a6400', amount: 4200,
-    content: 'Second NP-FW50 battery and a SanDisk Extreme 128 GB V30 card. ₱4,200 for both.',
+    subjectSlug: 'sony-a6400', amount: 75,
+    content: 'Second NP-FW50 battery and a SanDisk Extreme 128 GB V30 card. $75 for both.',
   },
   {
     memoryType: 'loan', title: 'Lent the camera to Mark', occurredAt: '2026-09-07',
@@ -143,14 +143,14 @@ export const MEMORIES: SeedMemory[] = [
   // --- Car -----------------------------------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the Civic', occurredAt: '2023-01-20',
-    subjectSlug: 'honda-civic', amount: 1650000,
-    content: 'Honda Civic RS Turbo, 2021, pearl white, 31,000 km on the clock. ₱1,650,000. Plate NCK 4472. VIN PADFC1640MV012877.',
+    subjectSlug: 'honda-civic', amount: 24500,
+    content: 'Honda Civic RS Turbo, 2021, pearl white, 31,000 km on the clock. $24,500. Plate NCK 4472. VIN PADFC1640MV012877.',
     sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
     memoryType: 'replacement', title: 'Car battery replaced', occurredAt: '2025-03-22',
-    subjectSlug: 'honda-civic', alsoSlugs: ['honda-casa'], amount: 6800,
-    content: 'Car would not crank after sitting three days. Honda Casa tested it and replaced the battery with a Motolite Gold 55B24L. ₱6,800 with the trade-in. Two-year warranty on the battery.',
+    subjectSlug: 'honda-civic', alsoSlugs: ['honda-casa'], amount: 180,
+    content: 'Car would not crank after sitting three days. Honda Casa tested it and replaced the battery with a Motolite Gold 55B24L. $180 with the trade-in. Two-year warranty on the battery.',
     tags: ['battery'],
   },
   {
@@ -161,21 +161,21 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'repair', title: 'Front rotors resurfaced', occurredAt: '2026-01-21',
-    subjectSlug: 'honda-civic', alsoSlugs: ['honda-casa'], amount: 4500,
-    content: 'Front discs were warped. Honda Casa skimmed both and fitted new front pads. The vibration under braking is gone. ₱4,500.',
+    subjectSlug: 'honda-civic', alsoSlugs: ['honda-casa'], amount: 260,
+    content: 'Front discs were warped. Honda Casa skimmed both and fitted new front pads. The vibration under braking is gone. $260.',
     tags: ['symptom-resolved'],
   },
   {
     memoryType: 'replacement', title: 'All four tyres replaced', occurredAt: '2026-06-02',
-    subjectSlug: 'honda-civic', amount: 32000,
-    content: 'Replaced all four with Michelin Primacy 4, 235/40 R18. ₱32,000 fitted and aligned. The old set had done 48,000 km.',
+    subjectSlug: 'honda-civic', amount: 720,
+    content: 'Replaced all four with Michelin Primacy 4, 235/40 R18. $720 fitted and aligned. The old set had done 48,000 km.',
   },
 
   // --- Aircon: the recurring-service story --------------------------------
   {
     memoryType: 'purchase', title: 'Bought the bedroom aircon', occurredAt: '2023-03-30',
-    subjectSlug: 'bedroom-aircon', alsoSlugs: ['sm-appliance'], amount: 38500,
-    content: 'Daikin FTKC35TVM 1.5 HP inverter split type from SM Appliance. ₱38,500 including installation. Five-year compressor warranty to March 2028.',
+    subjectSlug: 'bedroom-aircon', alsoSlugs: ['sm-appliance'], amount: 1450,
+    content: 'Daikin FTKC35TVM 1.5 HP inverter split type from SM Appliance. $1,450 including installation. Five-year compressor warranty to March 2028.',
     sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
@@ -186,8 +186,8 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'maintenance', title: 'Deep clean and refrigerant top-up', occurredAt: '2025-04-24',
-    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service'], amount: 2800,
-    content: 'Ramon from CoolAir found the evaporator coil packed with dust and the refrigerant slightly low. Chemical clean of the indoor and outdoor units plus a top-up of R-32. Cooling back to normal within the hour. ₱2,800.',
+    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service'], amount: 140,
+    content: 'Ramon from CoolAir found the evaporator coil packed with dust and the refrigerant slightly low. Chemical clean of the indoor and outdoor units plus a top-up of R-32. Cooling back to normal within the hour. $140.',
     tags: ['symptom-resolved'],
   },
   {
@@ -198,27 +198,27 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'repair', title: 'Slow refrigerant leak found and sealed', occurredAt: '2026-03-19',
-    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service'], amount: 4600,
-    content: 'Ramon pressure-tested the line and found a slow leak at the flare joint on the outdoor unit — which explains why last year\'s top-up only lasted a season. Reflared the connection, vacuumed and recharged. ₱4,600. He said if it drops again the coil itself is suspect and it is still under compressor warranty until 2028.',
+    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service'], amount: 260,
+    content: 'Ramon pressure-tested the line and found a slow leak at the flare joint on the outdoor unit — which explains why last year\'s top-up only lasted a season. Reflared the connection, vacuumed and recharged. $260. He said if it drops again the coil itself is suspect and it is still under compressor warranty until 2028.',
     tags: ['symptom-resolved', 'warranty'],
   },
   {
     memoryType: 'maintenance', title: 'Routine aircon cleaning — both units', occurredAt: '2026-08-15',
-    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service', 'living-aircon'], amount: 2400,
-    content: 'Six-monthly clean for the bedroom and living room units. ₱1,200 each. Ramon says the living room window unit is near the end of its life — the compressor is loud on startup and the housing is corroding.',
+    subjectSlug: 'bedroom-aircon', actorSlug: 'ramon', alsoSlugs: ['coolair-service', 'living-aircon'], amount: 180,
+    content: 'Six-monthly clean for the bedroom and living room units. $90 each. Ramon says the living room window unit is near the end of its life — the compressor is loud on startup and the housing is corroding.',
   },
 
   // --- Refrigerator: the decision -----------------------------------------
   {
     memoryType: 'decision', title: 'Chose the Samsung RT38 over the LG', occurredAt: '2026-04-09',
     subjectSlug: 'refrigerator',
-    content: 'Decided on the Samsung RT38K5930S8 instead of the LG GN-B392 and the Panasonic NR-BL immediately below it. Reasons, in the order they mattered: the freezer is 28 L bigger which is the whole reason we are replacing the old one; the warranty is 2 years on parts against LG\'s 1; and the measured energy consumption is about 8% lower over a year. The LG was ₱3,000 cheaper and had the nicer interior finish, but the freezer was the deciding factor.',
+    content: 'Decided on the Samsung RT38K5930S8 instead of the LG GN-B392 and the Panasonic NR-BL immediately below it. Reasons, in the order they mattered: the freezer is 28 L bigger which is the whole reason we are replacing the old one; the warranty is 2 years on parts against LG\'s 1; and the measured energy consumption is about 8% lower over a year. The LG was $80 cheaper and had the nicer interior finish, but the freezer was the deciding factor.',
     tags: ['decision'], confidence: 'confirmed',
   },
   {
     memoryType: 'purchase', title: 'Bought the Samsung refrigerator', occurredAt: '2026-04-11',
-    subjectSlug: 'refrigerator', alsoSlugs: ['sm-appliance'], amount: 42000,
-    content: 'Samsung RT38K5930S8 two-door inverter, 380 L, from SM Appliance Center. ₱42,000 delivered. Serial ABC123X9920. One-year full warranty, ten years on the inverter compressor.',
+    subjectSlug: 'refrigerator', alsoSlugs: ['sm-appliance'], amount: 1100,
+    content: 'Samsung RT38K5930S8 two-door inverter, 380 L, from SM Appliance Center. $1,100 delivered. Serial ABC123X9920. One-year full warranty, ten years on the inverter compressor.',
     sourceType: 'document_extracted', confidence: 'confirmed', tags: ['warranty'],
   },
   {
@@ -230,8 +230,8 @@ export const MEMORIES: SeedMemory[] = [
   // --- Drill: the location question ---------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the cordless drill', occurredAt: '2024-06-02',
-    subjectSlug: 'power-drill', alsoSlugs: ['ace-hardware'], amount: 6800,
-    content: 'Makita DF487D 18V brushless drill-driver with two 3.0Ah batteries and a charger from Ace Hardware. ₱6,800.',
+    subjectSlug: 'power-drill', alsoSlugs: ['ace-hardware'], amount: 180,
+    content: 'Makita DF487D 18V brushless drill-driver with two 3.0Ah batteries and a charger from Ace Hardware. $180.',
   },
   {
     memoryType: 'loan', title: 'Lent the drill to Alex', occurredAt: '2026-02-26',
@@ -253,7 +253,7 @@ export const MEMORIES: SeedMemory[] = [
   // --- Passport: the other location question ------------------------------
   {
     memoryType: 'note', title: 'Passport renewed', occurredAt: '2024-07-16',
-    subjectSlug: 'passport', amount: 1200,
+    subjectSlug: 'passport', amount: 130,
     content: 'New passport collected. Number P8842197A, valid to 15 July 2034. The old one was cancelled and returned.',
     tags: ['document', 'important'],
   },
@@ -267,8 +267,8 @@ export const MEMORIES: SeedMemory[] = [
   // --- Espresso machine ----------------------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the espresso machine', occurredAt: '2025-01-09',
-    subjectSlug: 'espresso-machine', amount: 48000,
-    content: 'Breville BES920XL dual boiler. ₱48,000. Two-year warranty to January 2027.',
+    subjectSlug: 'espresso-machine', amount: 1500,
+    content: 'Breville BES920XL dual boiler. $1,500. Two-year warranty to January 2027.',
     sourceType: 'document_extracted', confidence: 'confirmed',
   },
   {
@@ -279,21 +279,21 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'repair', title: 'Group head gasket replaced', occurredAt: '2026-05-29',
-    subjectSlug: 'espresso-machine', alsoSlugs: ['fixpoint-repairs'], amount: 1800,
-    content: 'The 58 mm group seal had hardened and was letting water past during the shot. FixPoint replaced the gasket and the dispersion screen and descaled both boilers. ₱1,800. No more puddle.',
+    subjectSlug: 'espresso-machine', alsoSlugs: ['fixpoint-repairs'], amount: 85,
+    content: 'The 58 mm group seal had hardened and was letting water past during the shot. FixPoint replaced the gasket and the dispersion screen and descaled both boilers. $85. No more puddle.',
     tags: ['symptom-resolved'],
   },
   {
     memoryType: 'maintenance', title: 'Descaled the machine', occurredAt: '2026-08-24',
-    subjectSlug: 'espresso-machine', amount: 450,
+    subjectSlug: 'espresso-machine', amount: 20,
     content: 'Quarterly descale with the Breville solution. Took about 40 minutes end to end.',
   },
 
   // --- Washing machine: warranty edge --------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the washing machine', occurredAt: '2024-09-21',
-    subjectSlug: 'washing-machine', alsoSlugs: ['sm-appliance'], amount: 36000,
-    content: 'LG FV1285S4W 8.5 kg front-load inverter. ₱36,000 with installation. Serial LG285S4W77120. Two-year warranty, so it runs out on 21 September 2026.',
+    subjectSlug: 'washing-machine', alsoSlugs: ['sm-appliance'], amount: 950,
+    content: 'LG FV1285S4W 8.5 kg front-load inverter. $950 with installation. Serial LG285S4W77120. Two-year warranty, so it runs out on 21 September 2026.',
     sourceType: 'document_extracted', confidence: 'confirmed', tags: ['warranty'],
   },
   {
@@ -312,8 +312,8 @@ export const MEMORIES: SeedMemory[] = [
   // --- Projector: second open loan ----------------------------------------
   {
     memoryType: 'purchase', title: 'Bought the projector', occurredAt: '2025-06-18',
-    subjectSlug: 'projector', amount: 29000,
-    content: 'Anker Nebula Mars II Pro, 1080p, built-in battery. ₱29,000.',
+    subjectSlug: 'projector', amount: 700,
+    content: 'Anker Nebula Mars II Pro, 1080p, built-in battery. $700.',
   },
   {
     memoryType: 'loan', title: 'Lent the projector to Ella', occurredAt: '2026-08-19',
@@ -326,45 +326,45 @@ export const MEMORIES: SeedMemory[] = [
   {
     memoryType: 'note', title: 'Kitchen renovation started', occurredAt: '2025-07-07',
     subjectSlug: 'kitchen-reno', actorSlug: 'jun', placeSlug: 'kitchen',
-    content: 'Jun Robles started on the kitchen. Scope is counters, cabinet doors, the range hood and re-tiling the splashback. Quoted eleven weeks and ₱285,000 all in.',
+    content: 'Jun Robles started on the kitchen. Scope is counters, cabinet doors, the range hood and re-tiling the splashback. Quoted eleven weeks and $28,500 all in.',
   },
   {
     memoryType: 'decision', title: 'Quartz counters over granite', occurredAt: '2025-07-14',
     subjectSlug: 'kitchen-reno',
-    content: 'Went with engineered quartz rather than granite. Granite was ₱18,000 cheaper for the run we needed, but it has to be resealed every year or two and we have already had one stain problem with the old counter. Quartz is non-porous and the colour is consistent across slabs, which matters because the run has a join.',
+    content: 'Went with engineered quartz rather than granite. Granite was $1,800 cheaper for the run we needed, but it has to be resealed every year or two and we have already had one stain problem with the old counter. Quartz is non-porous and the colour is consistent across slabs, which matters because the run has a join.',
     tags: ['decision'],
   },
   {
     memoryType: 'expense', title: 'Renovation progress payment 1', occurredAt: '2025-07-21',
-    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 95000,
-    content: 'First of three progress payments to Jun. ₱95,000 on demolition and cabinet carcasses.',
+    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 9500,
+    content: 'First of three progress payments to Jun. $9,500 on demolition and cabinet carcasses.',
   },
   {
     memoryType: 'expense', title: 'Renovation progress payment 2', occurredAt: '2025-08-25',
-    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 95000,
+    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 9500,
     content: 'Second payment. Counters templated and cut, splashback tiled.',
   },
   {
     memoryType: 'conversation', title: 'Jun on the range hood ducting', occurredAt: '2025-09-02',
     subjectSlug: 'kitchen-reno', actorSlug: 'jun',
-    content: 'Jun raised that the existing duct run to the exterior wall is 150 mm and the new hood wants 180 mm. Options were to reduce at the hood — which costs extractor performance and gets noisy — or to open the wall and enlarge the run for about ₱12,000 extra. Agreed to enlarge it.',
+    content: 'Jun raised that the existing duct run to the exterior wall is 150 mm and the new hood wants 180 mm. Options were to reduce at the hood — which costs extractor performance and gets noisy — or to open the wall and enlarge the run for about $1,200 extra. Agreed to enlarge it.',
   },
   {
     memoryType: 'expense', title: 'Renovation final payment', occurredAt: '2025-09-22',
-    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 107000,
-    content: 'Final payment including the ₱12,000 ducting variation. ₱107,000. Snag list was three items, all fixed the same week.',
+    subjectSlug: 'kitchen-reno', actorSlug: 'jun', amount: 10700,
+    content: 'Final payment including the $1,200 ducting variation. $10,700. Snag list was three items, all fixed the same week.',
   },
   {
     memoryType: 'note', title: 'Kitchen renovation finished', occurredAt: '2025-09-26',
     subjectSlug: 'kitchen-reno', placeSlug: 'kitchen',
-    content: 'Eleven weeks almost to the day. Total spend ₱297,000 against the ₱285,000 quote, the difference being the duct enlargement. Jun was worth using again.',
+    content: 'Eleven weeks almost to the day. Total spend $29,700 against the $28,500 quote, the difference being the duct enlargement. Jun was worth using again.',
   },
 
   // --- Cebu trip -----------------------------------------------------------
   {
     memoryType: 'note', title: 'Cebu trip booked', occurredAt: '2026-02-10',
-    subjectSlug: 'cebu-trip', amount: 34000,
-    content: 'Flights and the first three nights booked for the Cebu trip, 4–14 April. ₱34,000 for two.',
+    subjectSlug: 'cebu-trip', amount: 900,
+    content: 'Flights and the first three nights booked for the Cebu trip, 4–14 April. $900 for two.',
   },
   {
     memoryType: 'note', title: 'Packed the camera for Cebu', occurredAt: '2026-04-03',
@@ -373,8 +373,8 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'expense', title: 'Bantayan accommodation', occurredAt: '2026-04-08',
-    subjectSlug: 'cebu-trip', amount: 18500,
-    content: 'Four nights on Bantayan Island. ₱18,500.',
+    subjectSlug: 'cebu-trip', amount: 480,
+    content: 'Four nights on Bantayan Island. $480.',
   },
   {
     memoryType: 'observation', title: 'Salt air got into the camera bag', occurredAt: '2026-04-13',
@@ -386,18 +386,18 @@ export const MEMORIES: SeedMemory[] = [
   {
     memoryType: 'decision', title: 'Chose the 7800X3D over the 7700X', occurredAt: '2025-08-02',
     subjectSlug: 'pc-build',
-    content: 'Went with the Ryzen 7 7800X3D rather than the cheaper 7700X. It is ₱9,000 more, but the extra cache makes a large difference in the simulation games I actually play, and it draws noticeably less power under load so the cooler can be quieter. The 7700X would have been the better choice for compiling, which I do not do on this machine.',
+    content: 'Went with the Ryzen 7 7800X3D rather than the cheaper 7700X. It is $100 more, but the extra cache makes a large difference in the simulation games I actually play, and it draws noticeably less power under load so the cooler can be quieter. The 7700X would have been the better choice for compiling, which I do not do on this machine.',
     tags: ['decision'],
   },
   {
     memoryType: 'purchase', title: 'GPU bought on sale', occurredAt: '2025-09-14',
-    subjectSlug: 'pc-build', alsoSlugs: ['gaming-pc'], amount: 38000,
-    content: 'RTX 4070 Super at ₱38,000, down from ₱44,000. The last major part.',
+    subjectSlug: 'pc-build', alsoSlugs: ['gaming-pc'], amount: 600,
+    content: 'RTX 4070 Super at $600, down from $650. The last major part.',
   },
   {
     memoryType: 'installation', title: 'PC build finished', occurredAt: '2025-09-30',
     subjectSlug: 'gaming-pc', alsoSlugs: ['pc-build'], placeSlug: 'home-office',
-    content: 'Assembled and posted first try. Ryzen 7 7800X3D, RTX 4070 Super, 32 GB DDR5-6000, Corsair RM750e. Total across three months of parts: ₱98,000.',
+    content: 'Assembled and posted first try. Ryzen 7 7800X3D, RTX 4070 Super, 32 GB DDR5-6000, Corsair RM750e. Total across three months of parts: $1,750.',
   },
   {
     memoryType: 'observation', title: 'Coil whine under load', occurredAt: '2026-01-08',
@@ -422,13 +422,13 @@ export const MEMORIES: SeedMemory[] = [
   // --- Misc household ------------------------------------------------------
   {
     memoryType: 'repair', title: 'Water heater element replaced', occurredAt: '2026-06-27',
-    subjectSlug: 'water-heater', alsoSlugs: ['fixpoint-repairs'], amount: 2100,
-    content: 'Shower ran cold after about two minutes. The heating element had scaled over. Replaced and the inlet filter cleaned. ₱2,100.',
+    subjectSlug: 'water-heater', alsoSlugs: ['fixpoint-repairs'], amount: 160,
+    content: 'Shower ran cold after about two minutes. The heating element had scaled over. Replaced and the inlet filter cleaned. $160.',
   },
   {
     memoryType: 'maintenance', title: 'Mower serviced before the rains', occurredAt: '2026-05-08',
-    subjectSlug: 'lawn-mower', amount: 1500,
-    content: 'Oil changed to 10W-30, new NGK BPR6ES spark plug, air filter cleaned and the blade sharpened. Starts on the second pull again. ₱1,500.',
+    subjectSlug: 'lawn-mower', amount: 60,
+    content: 'Oil changed to 10W-30, new NGK BPR6ES spark plug, air filter cleaned and the blade sharpened. Starts on the second pull again. $60.',
   },
   {
     memoryType: 'observation', title: 'Guitar action feels high', occurredAt: '2026-07-03',
@@ -437,17 +437,17 @@ export const MEMORIES: SeedMemory[] = [
   },
   {
     memoryType: 'maintenance', title: 'Guitar set up and restrung', occurredAt: '2026-07-19',
-    subjectSlug: 'acoustic-guitar', amount: 900,
-    content: 'Truss rod adjusted, saddle lowered slightly and new Elixir Nanoweb 12-53 strings. Plays properly again. ₱900.',
+    subjectSlug: 'acoustic-guitar', amount: 65,
+    content: 'Truss rod adjusted, saddle lowered slightly and new Elixir Nanoweb 12-53 strings. Plays properly again. $65.',
   },
   {
     memoryType: 'installation', title: 'Mesh router set up', occurredAt: '2025-02-14',
-    subjectSlug: 'router', placeSlug: 'living-room', amount: 9800,
+    subjectSlug: 'router', placeSlug: 'living-room', amount: 230,
     content: 'TP-Link Deco X55 three-pack. Main node in the living room wired to the modem, second upstairs in the office, third in the bedroom. Dead spot at the back of the garage is gone.',
   },
   {
     memoryType: 'note', title: 'Storage unit rent increase', occurredAt: '2026-07-01',
-    subjectSlug: 'storage-unit', alsoSlugs: ['northgate-storage'], amount: 2200,
-    content: 'Northgate put the monthly rate up from ₱1,950 to ₱2,200 from July. Worth reviewing whether both boxes still need to be there.',
+    subjectSlug: 'storage-unit', alsoSlugs: ['northgate-storage'], amount: 135,
+    content: 'Northgate put the monthly rate up from $120 to $135 from July. Worth reviewing whether both boxes still need to be there.',
   },
 ]

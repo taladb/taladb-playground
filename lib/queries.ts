@@ -300,6 +300,21 @@ export async function memoryById(db: TalaDB, id: string): Promise<Memory | null>
   return collections(db).memories.findOne({ _id: id } as never)
 }
 
+/** Was this memory part of the demo corpus, rather than written here? */
+export function isSampleMemory(memory: Pick<MemoryRow, 'sample'>): boolean {
+  return memory.sample === true
+}
+
+/** How many memories the visitor wrote themselves — everything not flagged as sample. */
+export async function ownMemoryCount(db: TalaDB): Promise<number> {
+  const { memories } = collections(db)
+  const [all, sample] = await Promise.all([
+    memories.count(),
+    memories.count({ sample: true } as never),
+  ])
+  return all - sample
+}
+
 /** Corpus counts for the settings and insights screens. */
 export async function stats(db: TalaDB) {
   const { entities, memories, relations, attachments } = collections(db)

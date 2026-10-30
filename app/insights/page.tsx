@@ -8,6 +8,8 @@ import { collections } from '@/lib/schema'
 import { useAsync } from '@/lib/use-async'
 import { MEMORY_ICON, MEMORY_LABEL, money, plural, relative } from '@/lib/format'
 import { EngineBadge } from '../components/EngineBadge'
+import { PageHeader } from '../components/PageHeader'
+import { Segmented } from '../components/Segmented'
 import type { MemoryType } from '@/lib/types'
 
 /**
@@ -63,23 +65,22 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Insights</h1>
-        <EngineBadge engine="structured" />
-      </div>
+      <PageHeader
+        title="Insights"
+        description="What things have cost and what needs attention. Every number is a $group / $sum run inside the engine over every memory — computed, never estimated."
+        aside={<EngineBadge engine="structured" />}
+      />
 
-      <div className="segmented">
-        {(['all', ...(years.data ?? [])] as const).map((y) => (
-          <button
-            key={y}
-            onClick={() => setYear(y as number | 'all')}
-            aria-pressed={year === y}
-            className="segment tnum"
-          >
-            {y === 'all' ? 'All Time' : y}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label="Year"
+        className="tnum"
+        value={String(year)}
+        onChange={(v) => setYear(v === 'all' ? 'all' : Number(v))}
+        options={(['all', ...(years.data ?? [])] as const).map((y) => ({
+          value: String(y),
+          label: y === 'all' ? 'All time' : y,
+        }))}
+      />
 
       <section className="card p-5">
         <p className="text-xs muted">
@@ -96,7 +97,7 @@ export default function InsightsPage() {
         <div className="card mt-3 divide-y p-0">
           {byEntity.loading && <div className="skeleton h-32 rounded-none" />}
           {byEntity.data?.slice(0, 12).map((row) => (
-            <Link
+            <Link prefetch={false}
               key={row._id}
               href={`/entity/${row._id}`}
               className="block px-5 py-3 transition-colors "
@@ -157,7 +158,7 @@ export default function InsightsPage() {
             <ul className="mt-3 space-y-2">
               {warranties.data?.soon.map(({ entity }) => (
                 <li key={entity._id} className="flex items-baseline justify-between gap-3 text-sm">
-                  <Link href={`/entity/${entity._id}`} className="truncate ">
+                  <Link prefetch={false} href={`/entity/${entity._id}`} className="truncate ">
                     <span aria-hidden>{entity.icon} </span>
                     {entity.name}
                   </Link>
@@ -179,7 +180,7 @@ export default function InsightsPage() {
             <ul className="mt-3 space-y-2">
               {warranties.data?.lapsed.map(({ entity }) => (
                 <li key={entity._id} className="flex items-baseline justify-between gap-3 text-sm">
-                  <Link href={`/entity/${entity._id}`} className="truncate ">
+                  <Link prefetch={false} href={`/entity/${entity._id}`} className="truncate ">
                     <span aria-hidden>{entity.icon} </span>
                     {entity.name}
                   </Link>

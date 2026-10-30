@@ -164,7 +164,8 @@ export default function LabPage() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">Scale Lab</h1>
+        <p className="eyebrow mb-2">For developers</p>
+        <h1>Scale Lab</h1>
         <p className="mt-2 max-w-2xl text-sm muted">
           Your memory holds a few hundred entries, and at that size every query is cheap however it
           runs. This fills a separate database in this browser with tens of thousands of synthetic
@@ -188,13 +189,13 @@ export default function LabPage() {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="muted">Graph vectors</span>
+          <label className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-sm">
+            <span className="muted shrink-0">Graph vectors</span>
             <select
               value={quantization}
               onChange={(e) => setQuantization(e.target.value as VectorQuantization)}
               disabled={busy}
-              className="field w-auto py-1.5"
+              className="field w-auto min-w-0 max-w-full py-1.5"
             >
               <option value="binary">Binary-quantized (builds ~2× faster)</option>
               <option value="none">Full precision</option>

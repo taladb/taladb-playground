@@ -30,9 +30,9 @@ function iso(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-/** Round to a sensible-looking peso amount. */
+/** A whole-dollar amount near `base`. */
 function money(base: number, spread: number): number {
-  return Math.round((base + (rand() - 0.5) * spread) / 10) * 10
+  return Math.round(base + (rand() - 0.5) * spread)
 }
 
 const out: SeedMemory[] = []
@@ -44,13 +44,13 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
   const end = new Date('2026-09-10T00:00:00Z')
   while (d < end) {
     const litres = Math.round(28 + rand() * 14)
-    const perLitre = 58 + rand() * 9
-    const amount = Math.round(litres * perLitre)
+    const perLitre = 1.04 + rand() * 0.16
+    const amount = Math.round(litres * perLitre * 100) / 100
     const station = pick(STATIONS)
     out.push({
       memoryType: 'expense',
       title: `Fuel — ${station}`,
-      content: `Filled up at ${station}. ${litres} litres at about ₱${perLitre.toFixed(2)} per litre. Odometer reading noted on the receipt.`,
+      content: `Filled up at ${station}. ${litres} litres at about $${perLitre.toFixed(2)} per litre. Odometer reading noted on the receipt.`,
       occurredAt: d.toISOString().slice(0, 10),
       subjectSlug: 'honda-civic',
       amount,
@@ -65,9 +65,9 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
 // --- Car servicing: every 6 months -----------------------------------------
 {
   const services: Array<[string, string, number]> = [
-    ['Oil and filter change', 'Engine oil changed to 0W-20 full synthetic, oil filter replaced, and the usual multi-point check. Nothing flagged.', 3800],
-    ['Periodic maintenance service', 'Scheduled PMS. Oil, oil filter, air filter and cabin filter replaced. Brake fluid checked and topped up.', 6200],
-    ['Oil change and tyre rotation', 'Oil and filter plus a four-wheel rotation and pressure reset. Tread still good all round.', 4400],
+    ['Oil and filter change', 'Engine oil changed to 0W-20 full synthetic, oil filter replaced, and the usual multi-point check. Nothing flagged.', 85],
+    ['Periodic maintenance service', 'Scheduled PMS. Oil, oil filter, air filter and cabin filter replaced. Brake fluid checked and topped up.', 140],
+    ['Oil change and tyre rotation', 'Oil and filter plus a four-wheel rotation and pressure reset. Tread still good all round.', 100],
   ]
   for (const [year, month] of [[2023, 7], [2024, 1], [2024, 7], [2025, 1], [2025, 7], [2026, 1], [2026, 7]] as const) {
     const [title, content, base] = pick(services)
@@ -78,7 +78,7 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
       occurredAt: iso(year, month, 8 + Math.floor(rand() * 12)),
       subjectSlug: 'honda-civic',
       alsoSlugs: ['honda-casa'],
-      amount: money(base, 900),
+      amount: money(base, 20),
       tags: ['routine', 'service'],
     })
   }
@@ -90,10 +90,10 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
     out.push({
       memoryType: 'expense',
       title: 'Car insurance renewed',
-      content: 'Comprehensive motor insurance renewed for another year. Acts of nature and Acts of God included; excess unchanged at ₱6,000.',
+      content: 'Comprehensive motor insurance renewed for another year. Acts of nature and Acts of God included; excess unchanged at $500.',
       occurredAt: iso(year, 1, 24),
       subjectSlug: 'honda-civic',
-      amount: money(24000, 3000),
+      amount: money(650, 80),
       tags: ['insurance', 'annual'],
     })
     out.push({
@@ -102,7 +102,7 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
       content: 'Vehicle registration renewed at the LTO district office. Emission test and inspection passed on the first attempt.',
       occurredAt: iso(year, 4, 18),
       subjectSlug: 'honda-civic',
-      amount: money(3200, 600),
+      amount: money(120, 20),
       tags: ['registration', 'annual'],
     })
   }
@@ -147,7 +147,7 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
       content: `250 g of ${origin} from ${roaster}. Dialled in at about 18 g in, 36 g out, 28 seconds.`,
       occurredAt: d.toISOString().slice(0, 10),
       subjectSlug: 'espresso-machine',
-      amount: money(720, 280),
+      amount: money(16, 6),
       tags: ['coffee', 'routine'],
     })
     d = new Date(d.getTime() + (12 + Math.floor(rand() * 8)) * 86400000)
@@ -159,11 +159,11 @@ const STATIONS = ['Shell BGC', 'Petron Alabang', 'Caltex Sucat', 'Shell Daang Ha
   for (const year of [2025, 2026]) {
     for (let m = 1; m <= 12; m++) {
       if (year === 2026 && m > 9) break
-      const rate = year === 2026 && m >= 7 ? 2200 : 1950
+      const rate = year === 2026 && m >= 7 ? 135 : 120
       out.push({
         memoryType: 'expense',
         title: 'Storage unit rent',
-        content: `Monthly rent for unit 114 at Northgate Self Storage. ₱${rate.toLocaleString()}.`,
+        content: `Monthly rent for unit 114 at Northgate Self Storage. $${rate}.`,
         occurredAt: iso(year, m, 3),
         subjectSlug: 'storage-unit',
         alsoSlugs: ['northgate-storage'],
