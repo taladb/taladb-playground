@@ -22,6 +22,7 @@
  * encoders fail silently — no error, just scores that mean nothing.
  */
 
+import { useSyncExternalStore } from 'react'
 import { EMBEDDING_MODEL, VECTOR_DIM } from './schema'
 
 /** Main thread → worker. */
@@ -31,7 +32,7 @@ export type EmbedRequest =
 
 /** Worker → main thread. */
 export type EmbedResponse =
-  | { type: 'progress'; progress: number }
+  | { type: 'progress'; loadedBytes: number; totalBytes: number }
   | { type: 'ready' }
   | { type: 'error'; message: string }
   | { type: 'result'; id: number; vectors: Float32Array }
@@ -39,7 +40,12 @@ export type EmbedResponse =
 
 export type EmbedderState =
   | { status: 'idle' }
-  | { status: 'loading'; progress: number }
+  /**
+   * Bytes are summed over the model files that have started downloading; the
+   * total can still grow when the next file starts. Both are 0 until the
+   * first file reports, and stay at the total while the runtime initialises.
+   */
+  | { status: 'loading'; loadedBytes: number; totalBytes: number }
   | { status: 'ready' }
   | { status: 'error'; message: string }
 
@@ -58,6 +64,11 @@ export function getEmbedderState(): EmbedderState {
 export function subscribeEmbedder(fn: (s: EmbedderState) => void): () => void {
   listeners.add(fn)
   return () => listeners.delete(fn)
+}
+
+/** The load state, as a hook. Re-renders on every progress report. */
+export function useEmbedderState(): EmbedderState {
+  return useSyncExternalStore(subscribeEmbedder, getEmbedderState, getEmbedderState)
 }
 
 /** True once the model is resident and `embed` will resolve without a download. */
@@ -81,7 +92,7 @@ function getWorker(): Worker {
     const msg = event.data
     switch (msg.type) {
       case 'progress':
-        setState({ status: 'loading', progress: msg.progress })
+        setState({ status: 'loading', loadedBytes: msg.loadedBytes, totalBytes: msg.totalBytes })
         break
       case 'ready':
         setState({ status: 'ready' })
@@ -130,7 +141,7 @@ export function loadEmbedder(): Promise<void> {
   if (state.status === 'ready') return Promise.resolve()
   if (loading) return loading
 
-  setState({ status: 'loading', progress: 0 })
+  setState({ status: 'loading', loadedBytes: 0, totalBytes: 0 })
   loading = new Promise<void>((resolve, reject) => {
     settleLoad = { resolve, reject }
     getWorker().postMessage({ type: 'load', model: EMBEDDING_MODEL } satisfies EmbedRequest)

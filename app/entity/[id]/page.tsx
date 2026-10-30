@@ -74,7 +74,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
           {e.icon}
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight md:text-4xl">{e.name}</h1>
+          <h1>{e.name}</h1>
           <p className="mt-1 text-sm muted">
             {e.category || ENTITY_LABEL[e.entityType]}
             {e.manufacturer && ` · ${e.manufacturer}`}
@@ -152,7 +152,7 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {/* --- tabs ---------------------------------------------------------- */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b" role="tablist" aria-label="About this thing">
         {(
           [
             ['timeline', `Timeline (${timeline.length})`],
@@ -163,10 +163,11 @@ export default function EntityPage({ params }: { params: Promise<{ id: string }>
           <button
             key={key}
             onClick={() => setTab(key)}
-            aria-current={tab === key ? 'page' : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+            role="tab"
+            aria-selected={tab === key}
+            className={`-mb-px min-h-10 border-b-2 px-3 py-2 text-sm transition-colors ${
               tab === key
-                ? 'border-[var(--color-ios-blue)] font-semibold text-[var(--color-ios-blue)]'
+                ? 'border-[var(--color-label)] font-semibold'
                 : 'border-transparent muted'
             }`}
           >
@@ -220,9 +221,10 @@ function Timeline({ memories, loading }: { memories: MemoryRow[]; loading: boole
       {[...byYear.entries()].map(([year, rows]) => (
         <section key={year}>
           <h2
-            className="tnum sticky top-[var(--chrome-top)] z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
+            className="tnum sticky top-[calc(var(--chrome-top)+0.5rem)] z-20 mb-2.5 w-fit rounded-full px-3 py-1 text-[13px] font-semibold backdrop-blur-xl"
             style={{
-              background: 'color-mix(in oklab, var(--color-group) 75%, transparent)',
+              background: 'color-mix(in oklab, var(--color-card) 85%, transparent)',
+              border: '1px solid var(--color-border)',
               color: 'var(--color-label-2)',
             }}
           >
@@ -329,7 +331,7 @@ function Connections({ entityId }: { entityId: string }) {
           <h2 className="text-sm font-semibold">Kept here</h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {inside.map((child) => (
-              <Link
+              <Link prefetch={false}
                 key={child._id}
                 href={`/entity/${child._id}`}
                 className="chip "
@@ -349,7 +351,7 @@ function Connections({ entityId }: { entityId: string }) {
           </h2>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {group.entities.map((other) => (
-              <Link
+              <Link prefetch={false}
                 key={other._id}
                 href={`/entity/${other._id}`}
                 className="chip "

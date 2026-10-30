@@ -5,9 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTalaDB } from '@taladb/react'
 import { extractMemory, type MemoryProposal } from '@/lib/extract'
 import { saveMemory } from '@/lib/mutations'
+import { clearHandoff, peekHandoff } from '@/lib/handoff'
 import { collections } from '@/lib/schema'
 import { MEMORY_ICON, MEMORY_LABEL } from '@/lib/format'
 import { MEMORY_TYPES, type Entity, type MemoryType } from '@/lib/types'
+import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../components/Toast'
 
 /**
  * Capture.
@@ -32,8 +35,12 @@ function Capture() {
   const db = useTalaDB()
   const router = useRouter()
   const params = useSearchParams()
+  const toast = useToast()
 
-  const [text, setText] = useState(params.get('text') ?? '')
+  // From the home screen by hand-off (never the URL — see lib/handoff.ts); a
+  // `?text=` link still works for text the app itself wrote.
+  const [initialText] = useState(() => peekHandoff('text') ?? params.get('text') ?? '')
+  const [text, setText] = useState(initialText)
   const [proposal, setProposal] = useState<MemoryProposal | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -69,8 +76,8 @@ function Capture() {
   // Text arriving from the home screen goes straight to extraction — the user
   // already pressed a button once and should not have to press another.
   useEffect(() => {
-    const initial = params.get('text')
-    if (initial) void extract(initial)
+    clearHandoff('text')
+    if (initialText) void extract(initialText)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -93,9 +100,8 @@ function Capture() {
         sourceType: proposal.sourceType,
       })
 
-      const target = proposal.subject?.value._id
-      router.push(target ? `/entity/${target}` : '/timeline')
-      void id
+      toast('Memory saved on this device')
+      router.push(`/memory/${id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setSaving(false)
@@ -104,12 +110,11 @@ function Capture() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Remember Something</h1>
-        <p className="mt-2 max-w-2xl text-sm muted">
-          Write it the way you would say it out loud.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="New memory"
+        title="Remember something"
+        description="Write it the way you would say it out loud. Keepsake picks out the date, the amount and the things involved — right here, without sending your words anywhere — and shows you why, before anything is saved."
+      />
 
       <div className="card p-4">
         <label htmlFor="capture-text" className="sr-only">
@@ -121,7 +126,7 @@ function Capture() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={4}
-          placeholder="Changed the bicycle chain today at CycleHouse for ₱1,200…"
+          placeholder="Changed the bicycle chain today at CycleHouse for $40…"
           className="w-full resize-none bg-transparent text-[17px] leading-relaxed outline-none
  placeholder:text-[17px]"
         />
@@ -140,8 +145,8 @@ function Capture() {
       </div>
 
       {error && (
-        <div className="card p-4 text-sm text-[var(--color-ios-red)]">
-          {error}
+        <div role="alert" className="card p-4 text-sm text-[var(--color-ios-red)]">
+          Could not save: {error}. Nothing was written — your text is still here.
         </div>
       )}
 

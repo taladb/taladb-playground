@@ -1,4 +1,5 @@
 import { deriveDocId, type TalaDB } from 'taladb'
+import { CURRENCY } from './format'
 import { collections, VECTOR_DIM } from './schema'
 import type { Entity, Memory, Relation } from './types'
 
@@ -63,7 +64,7 @@ const DAY = 86_400_000
  *
  * Without this the demo rots. The corpus was written in September 2026, so by
  * November no warranty fell inside the home screen's 60-day window, the camera
- * had been "lent out" for two months, and "spent this year" would read ₱0 every
+ * had been "lent out" for two months, and "spent this year" would read $0 every
  * January. Whole days, so every memory keeps its time of day.
  */
 export function rebaseOffset(corpus: Pick<Corpus, 'generatedAt'>, now = Date.now()): number {
@@ -181,10 +182,11 @@ export function memoryDocs(
       ...(m.subjectSlug ? { subjectId: entityId(m.subjectSlug) } : {}),
       ...(m.actorSlug ? { actorId: entityId(m.actorSlug) } : {}),
       ...(m.placeSlug ? { placeId: entityId(m.placeSlug) } : {}),
-      ...(m.amount !== undefined ? { amount: m.amount, currency: 'PHP' } : {}),
+      ...(m.amount !== undefined ? { amount: m.amount, currency: CURRENCY } : {}),
       ...(m.tags ? { tags: m.tags } : {}),
       sourceType: m.sourceType,
       confidence: m.confidence,
+      sample: true as const,
       ...(vectors
         ? {
             embedding: Array.from(vectors.subarray(index * VECTOR_DIM, (index + 1) * VECTOR_DIM)),

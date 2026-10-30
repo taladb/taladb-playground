@@ -36,12 +36,24 @@ function load(model: string): Promise<Extractor> {
       const wasm = env.backends.onnx.wasm
       if (wasm) wasm.wasmPaths = `/vendor/ort/${env.version}/`
 
+      // transformers.js reports progress per file, and each file starts again
+      // at 0% — so a single percentage jumps backwards three times during one
+      // load. Summing bytes across every file seen so far gives a number that
+      // only moves forward. The total grows as each new file starts, which is
+      // why the UI shows bytes rather than claiming a percentage of the whole.
+      const files = new Map<string, { loaded: number; total: number }>()
       const loaded = (await pipeline('feature-extraction', model, {
         dtype: 'q8',
-        progress_callback: (p: { status: string; progress?: number }) => {
-          if (p.status === 'progress' && typeof p.progress === 'number') {
-            post({ type: 'progress', progress: Math.round(p.progress) })
+        progress_callback: (p: { status: string; file?: string; loaded?: number; total?: number }) => {
+          if (p.status !== 'progress' || !p.file || typeof p.total !== 'number') return
+          files.set(p.file, { loaded: p.loaded ?? 0, total: p.total })
+          let sumLoaded = 0
+          let sumTotal = 0
+          for (const f of files.values()) {
+            sumLoaded += f.loaded
+            sumTotal += f.total
           }
+          post({ type: 'progress', loadedBytes: sumLoaded, totalBytes: sumTotal })
         },
       })) as unknown as Extractor
       post({ type: 'ready' })

@@ -192,6 +192,16 @@ async function embedAll(texts: string[]): Promise<Float32Array> {
   return out
 }
 
+/**
+ * The day the story is told from — the "today" the corpus was written against.
+ *
+ * Not the wall clock: `rebaseOffset` (lib/corpus.ts) moves every date forward
+ * by the days between this and the visitor's today, so stamping a regenerated
+ * corpus with the moment it was regenerated would leave its newest memory
+ * weeks in the past. Change it only together with the dates in scripts/seed/.
+ */
+const STORY_DATE = '2026-09-13T11:55:06.433Z'
+
 async function main() {
   const withEmbeddings = !process.argv.includes('--no-embeddings')
 
@@ -210,7 +220,7 @@ async function main() {
     JSON.stringify(
       {
         version: 1,
-        generatedAt: new Date().toISOString(),
+        generatedAt: STORY_DATE,
         embeddingModel: MODEL,
         dims: DIMS,
         entities,

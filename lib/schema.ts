@@ -13,8 +13,12 @@ export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2'
 /**
  * Bump to force every device to re-seed its demo corpus. Only the corpus's own
  * documents are replaced; memories the visitor wrote stay.
+ *
+ * 3: the corpus moved from pesos to US dollars (amounts, prices and the text
+ * that states them, re-embedded to match).
+ * 4: corpus memories carry `sample: true`.
  */
-export const SEED_VERSION = 2
+export const SEED_VERSION = 4
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -81,6 +85,7 @@ const MemorySchema = z.object({
     'user_entered', 'document_extracted', 'photo_extracted', 'imported', 'system_inferred',
   ]),
   confidence: z.enum(['confirmed', 'extracted', 'inferred']),
+  sample: z.literal(true).optional(),
   confidenceScore: z.number().min(0).max(1).optional(),
   tags: z.array(z.string()).optional(),
   // Length is checked rather than merely typed: a vector of the wrong width is

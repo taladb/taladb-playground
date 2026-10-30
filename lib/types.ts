@@ -173,6 +173,11 @@ export interface MemoryFields {
 
   sourceType: SourceType
   confidence: Confidence
+  /**
+   * Set on every memory the demo corpus writes, and on nothing else. Lets the
+   * UI label sample data as sample, and count what the visitor wrote.
+   */
+  sample?: true
   /** 0–1. Only meaningful for `extracted` / `inferred`. */
   confidenceScore?: number
 

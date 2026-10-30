@@ -156,11 +156,13 @@ function extractDate(text: string, now = new Date()): ExtractedField<number> {
 // --- money ------------------------------------------------------------------
 
 function extractAmount(text: string): ExtractedField<number> | null {
-  // ₱1,200 / P1200 / PHP 1,200 / 1,200 pesos / $45.00
+  // $1,200 / $45.50 / USD 45 / 45 dollars / 45 bucks. Amounts are recorded
+  // in US dollars, so a bare number is never taken for one — "2 batteries"
+  // is not a price.
   const patterns: Array<[RegExp, number]> = [
-    [/(?:₱|php\s*|p(?=\d))\s*([\d,]+(?:\.\d{1,2})?)/i, 0.95],
-    [/([\d,]+(?:\.\d{1,2})?)\s*(?:pesos|php)\b/i, 0.9],
-    [/\$\s*([\d,]+(?:\.\d{1,2})?)/, 0.9],
+    [/(?:US)?\$\s*([\d,]+(?:\.\d{1,2})?)/i, 0.95],
+    [/\busd\s*([\d,]+(?:\.\d{1,2})?)/i, 0.9],
+    [/([\d,]+(?:\.\d{1,2})?)\s*(?:dollars?|bucks|usd)\b/i, 0.9],
   ]
 
   for (const [re, confidence] of patterns) {

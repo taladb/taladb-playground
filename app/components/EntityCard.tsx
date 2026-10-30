@@ -26,7 +26,7 @@ export function EntityCard({
   const color = ENTITY_COLOR[entity.entityType] ?? 'var(--color-ios-gray)'
 
   return (
-    <Link
+    <Link prefetch={false}
       href={`/entity/${entity._id}`}
       style={{ '--i': index } as React.CSSProperties}
       className="card rise group flex items-center gap-3 p-3.5 transition-transform duration-150 active:scale-[0.98]"

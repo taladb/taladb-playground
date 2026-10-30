@@ -5,6 +5,7 @@ import { useTalaDB } from '@taladb/react'
 import type { TalaDB } from 'taladb'
 import { ensureIndexes, ensureVectorIndex, isSeeded, markSeeded, SEED_VERSION } from './schema'
 import { writeCorpus as writeCorpusDocs, type Corpus } from './corpus'
+import { Splash, StartupError } from '@/app/components/Splash'
 
 // ---------------------------------------------------------------------------
 // First-run seeding.
@@ -86,7 +87,7 @@ async function writeCorpus(db: TalaDB, onProgress: (p: SeedProgress) => void): P
 
 const PHASE_LABEL: Record<SeedProgress['phase'], string> = {
   idle: 'Starting',
-  fetching: 'Loading your memories',
+  fetching: 'Loading sample memories',
   entities: 'Adding things, people and places',
   memories: 'Writing the timeline',
   relations: 'Connecting everything up',
@@ -120,62 +121,33 @@ export function SeedGate({ children }: { children: React.ReactNode }) {
   }, [db])
 
   if (error) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-6">
-        <div
-          className="card max-w-md p-6"
-          style={{ background: 'color-mix(in oklab, var(--color-ios-red) 12%, transparent)' }}
-        >
-          <h2 className="text-[17px] font-semibold text-[var(--color-ios-red)]">
-            Could not set up your memory
-          </h2>
-          <p className="muted mt-2 text-[14px]">{error}</p>
-        </div>
-      </div>
-    )
+    return <StartupError title="Could not set up the sample memories" message={error} />
   }
 
   if (!ready) {
     const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : null
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6">
-        <svg viewBox="0 0 32 32" className="h-12 w-12" aria-hidden>
-          <rect width="32" height="32" rx="8" fill="var(--color-ios-blue)" />
-          <path
-            d="M8 23 Q12 9 16 16 Q20 23 24 9"
-            stroke="white"
-            strokeWidth="2.25"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <circle cx="8" cy="23" r="2.4" fill="white" />
-          <circle cx="16" cy="16" r="2.4" fill="white" />
-          <circle cx="24" cy="9" r="2.4" fill="white" />
-        </svg>
-
-        <div className="text-center">
-          <p role="status" aria-live="polite" className="text-[17px] font-semibold">
-            {PHASE_LABEL[progress.phase]}
-          </p>
-          <p className="mt-1.5 text-sm muted">
-            Setting up once on this device. Nothing leaves it.
-          </p>
-        </div>
-
-        <div
-          className="h-1.5 w-64 overflow-hidden rounded-full "
-          role="progressbar"
-          aria-valuenow={pct ?? undefined}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Setup progress"
-        >
+      <Splash status={PHASE_LABEL[progress.phase]}>
+        <div className="w-64">
           <div
-            className="h-full rounded-full bg-[var(--color-ios-blue)] transition-[width] duration-300"
-            style={{ width: pct === null ? '25%' : `${pct}%` }}
-          />
+            className="h-1 overflow-hidden rounded-full"
+            style={{ background: 'var(--color-fill)' }}
+            role="progressbar"
+            aria-valuenow={pct ?? undefined}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Setup progress"
+          >
+            {/* No number to show until a phase reports one — an indeterminate
+                bar rather than an invented percentage. */}
+            <div
+              className={`h-full rounded-full transition-[width] duration-300 ${pct === null ? 'pulse-dot' : ''}`}
+              style={{ width: pct === null ? '100%' : `${pct}%`, background: 'var(--color-label)', opacity: pct === null ? 0.25 : 1 }}
+            />
+          </div>
+          <p className="muted-more mt-3 text-[12px]">Setting up once, on this device only.</p>
         </div>
-      </div>
+      </Splash>
     )
   }
 
