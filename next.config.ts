@@ -1,6 +1,16 @@
 import type { NextConfig } from 'next'
 import { fileURLToPath } from 'node:url'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
+import { readFileSync } from 'node:fs'
+
+const root = dirname(fileURLToPath(import.meta.url))
+
+// The engine version the footer names, read from what is actually installed so
+// a bump can never leave the page claiming an older one. `taladb` does not
+// export its package.json, so read the file rather than resolving it.
+const taladbVersion = (
+  JSON.parse(readFileSync(join(root, 'node_modules/taladb/package.json'), 'utf8')) as { version: string }
+).version
 
 /**
  * Almost nothing is needed here any more.
@@ -20,7 +30,11 @@ import { dirname } from 'node:path'
  */
 const nextConfig: NextConfig = {
   turbopack: {
-    root: dirname(fileURLToPath(import.meta.url)),
+    root,
+  },
+
+  env: {
+    NEXT_PUBLIC_TALADB_VERSION: taladbVersion,
   },
 
   // Next 16 writes AGENTS.md / CLAUDE.md into the repo root on dev start. This
@@ -35,6 +49,17 @@ const nextConfig: NextConfig = {
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
         ],
+      },
+      // Self-hosted by scripts/fetch-model.ts. The runtime path carries the
+      // transformers.js version, so it never changes in place; the model path
+      // is pinned to one revision in that script.
+      {
+        source: '/vendor/ort/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/models/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }],
       },
     ]
   },

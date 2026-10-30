@@ -1,5 +1,7 @@
 import { z } from 'zod'
-import type { TalaDB, Collection, CollectionOptions } from 'taladb'
+import type {
+  TalaDB, Collection, CollectionOptions, VectorBuildProgress, VectorRebuildOptions,
+} from 'taladb'
 import type { Entity, Memory, Relation, Attachment, Blob, AppMeta } from './types'
 
 export const DB_NAME = 'keepsake.db'
@@ -8,8 +10,11 @@ export const DB_NAME = 'keepsake.db'
 export const VECTOR_DIM = 384
 export const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2'
 
-/** Bump to force every device to re-seed its demo corpus. */
-export const SEED_VERSION = 1
+/**
+ * Bump to force every device to re-seed its demo corpus. Only the corpus's own
+ * documents are replaced; memories the visitor wrote stay.
+ */
+export const SEED_VERSION = 2
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -170,10 +175,10 @@ export function collections(db: TalaDB): Collections {
 //   a range scan. An answer that has to be right is never routed through a
 //   vector.
 //
-//   Vector engine — one HNSW index over memory embeddings backs the part that
-//   must be forgiving. "bike keeps making a clicking noise" shares no tokens
-//   with "rear derailleur adjusted", and no amount of keyword tuning fixes
-//   that.
+//   Vector engine — one vector index over memory embeddings (exact at this
+//   size, HNSW past HNSW_FROM) backs the part that must be forgiving. "bike
+//   keeps making a clicking noise" shares no tokens with "rear derailleur
+//   adjusted", and no amount of keyword tuning fixes that.
 //
 // `hybridSearch` needs one of each on the SAME collection, which is why
 // `memories` carries both an FTS index on `content` and a vector index on
@@ -243,6 +248,15 @@ export async function ensureIndexes(db: TalaDB): Promise<void> {
  * set where the graph starts to earn its keep, and a corpus that grows past it
  * gets one automatically.
  */
+/**
+ * Below this many vectors an exact scan is faster than a graph traversal and is
+ * exact as well, so there is nothing to trade.
+ */
+export const HNSW_FROM = 20_000
+
+/** Graph shape for this app — the same whether built here or from Settings. */
+export const HNSW_GRAPH = { m: 16, efConstruction: 200 } as const
+
 export async function ensureVectorIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
   const { memories } = collections(db)
 
@@ -251,10 +265,6 @@ export async function ensureVectorIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
     const status = await memories.vectorIndexStatus('embedding')
     return status.state === 'flat' ? 'flat' : 'hnsw'
   }
-
-  // Below this, an exact scan is faster than a graph traversal and is exact
-  // as well, so there is nothing to trade.
-  const HNSW_FROM = 20_000
 
   const [count, info] = await Promise.all([memories.count(), db.storageInfo?.()])
   // `storageInfo().hnsw` reports whether this particular browser got graph
@@ -268,10 +278,36 @@ export async function ensureVectorIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
     indexType,
     // Modest M: a personal corpus is thousands, not millions, and a smaller
     // graph builds far faster on a phone without measurably hurting recall.
-    ...(indexType === 'hnsw' ? { hnswM: 16, hnswEfConstruction: 200 } : {}),
+    ...(indexType === 'hnsw' ? { hnswM: HNSW_GRAPH.m, hnswEfConstruction: HNSW_GRAPH.efConstruction } : {}),
   })
 
   return indexType
+}
+
+/**
+ * Build an HNSW graph over the memory vectors now, whatever the corpus size.
+ *
+ * This is the Settings page's experiment, not the app's policy: below
+ * HNSW_FROM the graph is slower and approximate, and that is exactly what the
+ * recall measurement next to it is there to show. `rebuildVectorIndex` on an
+ * exact index promotes it to a persistent graph — which is why the page labels
+ * it as such rather than calling it a rebuild, and offers the way back.
+ */
+export async function buildGraphIndex(
+  db: TalaDB,
+  opts: Pick<VectorRebuildOptions, 'signal' | 'onProgress'> = {},
+): Promise<VectorBuildProgress> {
+  return collections(db).memories.rebuildVectorIndex('embedding', {
+    ...HNSW_GRAPH,
+    batchSize: 32,
+    ...opts,
+  })
+}
+
+/** Undo `buildGraphIndex`: drop the graph and let the size rule choose again. */
+export async function returnToExactIndex(db: TalaDB): Promise<'hnsw' | 'flat'> {
+  await collections(db).memories.dropVectorIndex('embedding')
+  return ensureVectorIndex(db)
 }
 
 // --- one-time local setup markers ------------------------------------------

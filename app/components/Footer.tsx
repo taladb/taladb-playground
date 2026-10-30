@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { KEPTA_PLAY_URL } from './AppBanner'
 
 export function Footer() {
@@ -15,7 +16,11 @@ export function Footer() {
         >
           TalaDB
         </a>{' '}
-        0.12 — documents, full-text and vector search in one embedded engine. The same app with
+        {process.env.NEXT_PUBLIC_TALADB_VERSION} — documents, full-text and vector search in one embedded engine (
+        <Link href="/lab" style={{ color: 'var(--color-ios-blue)' }}>
+          see it at scale
+        </Link>
+        ). The same app with
         your own data, encrypted on your phone:{' '}
         <a href={KEPTA_PLAY_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-ios-blue)' }}>
           Kepta for Android

@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useTalaDB } from '@taladb/react'
-import { deriveDocId, type TalaDB } from 'taladb'
-import {
-  collections, ensureIndexes, ensureVectorIndex, isSeeded, markSeeded,
-  SEED_VERSION, VECTOR_DIM,
-} from './schema'
-import type { Entity, Memory, Relation } from './types'
+import type { TalaDB } from 'taladb'
+import { ensureIndexes, ensureVectorIndex, isSeeded, markSeeded, SEED_VERSION } from './schema'
+import { writeCorpus as writeCorpusDocs, type Corpus } from './corpus'
 
 // ---------------------------------------------------------------------------
 // First-run seeding.
@@ -18,64 +15,11 @@ import type { Entity, Memory, Relation } from './types'
 // is already on disk, with no network in the path at all.
 // ---------------------------------------------------------------------------
 
-interface Corpus {
-  version: number
-  embeddingModel: string
-  dims: number
-  // Spelled out rather than derived from `Entity` with `Omit`: `Entity` carries
-  // a `Document` index signature, and `Omit` over one keeps the signature while
-  // discarding every specific field type — `e.slug` would arrive as `Value`.
-  entities: Array<{
-    entityType: Entity['entityType']
-    slug: string
-    name: string
-    description: string
-    category: string
-    icon: string
-    manufacturer?: string
-    model?: string
-    serialNumber?: string
-    purchasePrice?: number
-    purchasedAt?: number
-    warrantyExpiresAt?: number
-    condition?: string
-    parentSlug?: string
-    attributes?: Record<string, string>
-    tags?: string[]
-    searchText: string
-  }>
-  memories: Array<{
-    memoryType: Memory['memoryType']
-    title: string
-    content: string
-    occurredAt: number
-    entitySlugs: string[]
-    subjectSlug?: string
-    actorSlug?: string
-    placeSlug?: string
-    amount?: number
-    tags?: string[]
-    sourceType: Memory['sourceType']
-    confidence: Memory['confidence']
-  }>
-  relations: Array<{ sourceSlug: string; targetSlug: string; relationType: Relation['relationType'] }>
-}
-
 export interface SeedProgress {
   phase: 'idle' | 'fetching' | 'entities' | 'memories' | 'relations' | 'indexing' | 'done'
   loaded: number
   total: number
 }
-
-/**
- * Stable document ids, derived from the slug rather than minted.
- *
- * This is what makes seeding idempotent: the same slug always maps to the same
- * ULID, so a re-run inserts nothing new — a duplicate id is refused rather than
- * silently creating a second copy. It also means the corpus can reference
- * entities by slug and have those references resolve without a lookup table.
- */
-const entityId = (slug: string) => deriveDocId('entities', slug)
 
 // React 19 effect semantics (and StrictMode) can run the gate's effect twice.
 // Without this lock the second pass races the first and the corpus lands twice.
@@ -93,103 +37,7 @@ function runSeed(db: TalaDB, onProgress: (p: SeedProgress) => void): Promise<voi
 
 async function seed(db: TalaDB, onProgress: (p: SeedProgress) => void): Promise<void> {
   const alreadySeeded = await isSeeded(db, 'corpus', SEED_VERSION)
-
-  if (!alreadySeeded) {
-    onProgress({ phase: 'fetching', loaded: 0, total: 0 })
-
-    const [corpus, vectorBuffer] = await Promise.all([
-      fetch('/seed/corpus.json').then((r) => {
-        if (!r.ok) throw new Error(`corpus.json (${r.status})`)
-        return r.json() as Promise<Corpus>
-      }),
-      fetch('/seed/embeddings.bin').then((r) => (r.ok ? r.arrayBuffer() : null)),
-    ])
-
-    const vectors = vectorBuffer ? new Float32Array(vectorBuffer) : null
-    // Fail loudly rather than pair a memory with someone else's vector. A
-    // mismatch here would produce a search index that is subtly, silently wrong.
-    if (vectors && vectors.length !== corpus.memories.length * VECTOR_DIM) {
-      throw new Error(
-        `embeddings/corpus mismatch: ${vectors.length / VECTOR_DIM} vectors, ${corpus.memories.length} memories`,
-      )
-    }
-
-    const { entities, memories, relations } = collections(db)
-
-    // A partial seed from an interrupted first run would otherwise merge with
-    // this one. Derived ids make the inserts idempotent, but the marker is what
-    // says the corpus is *complete*, so start clean when it is missing.
-    await Promise.all([entities.deleteMany({}), memories.deleteMany({}), relations.deleteMany({})])
-
-    const now = Date.now()
-
-    // --- entities ---------------------------------------------------------
-    onProgress({ phase: 'entities', loaded: 0, total: corpus.entities.length })
-    await entities.insertMany(
-      corpus.entities.map(({ parentSlug, ...e }) => ({
-        ...e,
-        _id: entityId(e.slug),
-        ...(parentSlug ? { parentId: entityId(parentSlug) } : {}),
-        createdAt: e.purchasedAt ?? now,
-        updatedAt: now,
-      })),
-    )
-    onProgress({ phase: 'entities', loaded: corpus.entities.length, total: corpus.entities.length })
-
-    // --- memories ---------------------------------------------------------
-    const nameBySlug = new Map(corpus.entities.map((e) => [e.slug, e.name]))
-    const total = corpus.memories.length
-    const BATCH = 100
-
-    for (let i = 0; i < total; i += BATCH) {
-      const docs = corpus.memories.slice(i, i + BATCH).map((m, j) => {
-        const index = i + j
-        return {
-          _id: deriveDocId('memories', `${m.occurredAt}-${m.title}-${index}`),
-          memoryType: m.memoryType,
-          title: m.title,
-          content: m.content,
-          occurredAt: m.occurredAt,
-          entityIds: m.entitySlugs.map(entityId),
-          entityNames: m.entitySlugs.map((s) => nameBySlug.get(s) ?? s),
-          ...(m.subjectSlug ? { subjectId: entityId(m.subjectSlug) } : {}),
-          ...(m.actorSlug ? { actorId: entityId(m.actorSlug) } : {}),
-          ...(m.placeSlug ? { placeId: entityId(m.placeSlug) } : {}),
-          ...(m.amount !== undefined ? { amount: m.amount, currency: 'PHP' } : {}),
-          ...(m.tags ? { tags: m.tags } : {}),
-          sourceType: m.sourceType,
-          confidence: m.confidence,
-          ...(vectors
-            ? {
-                embedding: Array.from(
-                  vectors.subarray(index * VECTOR_DIM, index * VECTOR_DIM + VECTOR_DIM),
-                ),
-                embeddingModel: corpus.embeddingModel,
-              }
-            : {}),
-          createdAt: m.occurredAt,
-          updatedAt: m.occurredAt,
-        }
-      })
-
-      await memories.insertMany(docs)
-      onProgress({ phase: 'memories', loaded: Math.min(i + BATCH, total), total })
-      // Yield so the progress bar can actually paint between batches.
-      await new Promise((r) => setTimeout(r))
-    }
-
-    // --- relations --------------------------------------------------------
-    onProgress({ phase: 'relations', loaded: 0, total: corpus.relations.length })
-    await relations.insertMany(
-      corpus.relations.map((r) => ({
-        _id: deriveDocId('relations', `${r.sourceSlug}|${r.targetSlug}|${r.relationType}`),
-        sourceId: entityId(r.sourceSlug),
-        targetId: entityId(r.targetSlug),
-        relationType: r.relationType,
-        createdAt: now,
-      })),
-    )
-  }
+  if (!alreadySeeded) await writeCorpus(db, onProgress)
 
   // Indexes are built LAST on a first run, so each one is a single backfill
   // over a populated collection rather than per-insert upkeep across 300
@@ -200,6 +48,40 @@ async function seed(db: TalaDB, onProgress: (p: SeedProgress) => void): Promise<
 
   if (!alreadySeeded) await markSeeded(db, 'corpus', SEED_VERSION)
   onProgress({ phase: 'done', loaded: 0, total: 0 })
+}
+
+/**
+ * Put the demo corpus back the way it shipped, moved so that it ends today.
+ *
+ * Anything the visitor wrote themselves — memories, new things, the edges their
+ * captures created — stays. Only documents with a corpus-derived id are
+ * replaced.
+ */
+export async function resetDemoCorpus(
+  db: TalaDB,
+  onProgress: (p: SeedProgress) => void = () => {},
+): Promise<void> {
+  await writeCorpus(db, onProgress)
+  await ensureIndexes(db)
+  await ensureVectorIndex(db)
+  await markSeeded(db, 'corpus', SEED_VERSION)
+  onProgress({ phase: 'done', loaded: 0, total: 0 })
+}
+
+async function writeCorpus(db: TalaDB, onProgress: (p: SeedProgress) => void): Promise<void> {
+  onProgress({ phase: 'fetching', loaded: 0, total: 0 })
+
+  const [corpus, vectorBuffer] = await Promise.all([
+    fetch('/seed/corpus.json').then((r) => {
+      if (!r.ok) throw new Error(`corpus.json (${r.status})`)
+      return r.json() as Promise<Corpus>
+    }),
+    fetch('/seed/embeddings.bin').then((r) => (r.ok ? r.arrayBuffer() : null)),
+  ])
+
+  await writeCorpusDocs(db, corpus, vectorBuffer ? new Float32Array(vectorBuffer) : null, {
+    onProgress: (phase, loaded, total) => onProgress({ phase, loaded, total }),
+  })
 }
 
 const PHASE_LABEL: Record<SeedProgress['phase'], string> = {

@@ -9,3 +9,9 @@ next-env.d.ts
 .verify.db
 AGENTS.md
 CLAUDE.md
+
+# Fetched by `bun run model` (scripts/fetch-model.ts) and served from this origin.
+public/models
+public/vendor
+.lab.db
+.verify-lab.db

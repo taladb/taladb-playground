@@ -1,14 +1,18 @@
 'use client'
 
+import Link from 'next/link'
 import { useRef, useState, useSyncExternalStore } from 'react'
 import { useTalaDB } from '@taladb/react'
-import type { TalaDB, VectorCacheStats, VectorIndexStatus } from 'taladb'
-import { collections, VECTOR_DIM } from '@/lib/schema'
+import type { MemoryPressure, TalaDB, VectorCacheStats, VectorIndexStatus } from 'taladb'
+import {
+  buildGraphIndex, collections, HNSW_FROM, returnToExactIndex, VECTOR_DIM,
+} from '@/lib/schema'
+import { resetDemoCorpus } from '@/lib/seed'
 import { stats } from '@/lib/queries'
 import { backfillEmbeddings } from '@/lib/mutations'
 import { downloadPack, exportPack, importPack, type ImportReport } from '@/lib/memorypack'
 import {
-  embed, getEmbedderState, loadEmbedder, subscribeEmbedder, type EmbedderState,
+  embedMany, getEmbedderState, loadEmbedder, subscribeEmbedder, type EmbedderState,
 } from '@/lib/embed'
 import { useAsync } from '@/lib/use-async'
 import { plural } from '@/lib/format'
@@ -92,13 +96,26 @@ function useEmbedderState(): EmbedderState {
 function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; total: number }) {
   const state = useEmbedderState()
   const [backfill, setBackfill] = useState<{ done: number; total: number } | null>(null)
+  const [backfilling, setBackfilling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const missing = total - embedded
 
   async function runBackfill() {
-    await loadEmbedder()
-    setBackfill({ done: 0, total: missing })
-    const done = await backfillEmbeddings(db, (d, t) => setBackfill({ done: d, total: t }))
-    setBackfill({ done, total: done })
+    // Two runs at once would both read the same un-embedded rows and embed
+    // each of them twice.
+    if (backfilling) return
+    setBackfilling(true)
+    setError(null)
+    try {
+      await loadEmbedder()
+      setBackfill({ done: 0, total: missing })
+      const done = await backfillEmbeddings(db, (d, t) => setBackfill({ done: d, total: t }))
+      setBackfill({ done, total: done })
+    } catch (err) {
+      setError(message(err))
+    } finally {
+      setBackfilling(false)
+    }
   }
 
   return (
@@ -132,8 +149,8 @@ function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; 
           </button>
         )}
         {missing > 0 && (
-          <button onClick={() => void runBackfill()} className="btn-ghost text-sm">
-            Embed {plural(missing, 'remaining memory', 'remaining memories')}
+          <button onClick={() => void runBackfill()} disabled={backfilling} className="btn-ghost text-sm">
+            {backfilling ? 'Embedding…' : `Embed ${plural(missing, 'remaining memory', 'remaining memories')}`}
           </button>
         )}
       </div>
@@ -143,6 +160,7 @@ function SemanticPanel({ db, embedded, total }: { db: TalaDB; embedded: number; 
           Embedded {backfill.done} of {backfill.total}.
         </p>
       )}
+      {error && <p className="mt-3 text-xs text-[var(--color-ios-red)]">{error}</p>}
 
       <p className="mt-4 text-xs leading-relaxed muted">
         Vectors are never treated as canonical. Every one can be regenerated from the memory text,
@@ -159,6 +177,7 @@ function VectorPanel({ db }: { db: TalaDB }) {
   const [rebuild, setRebuild] = useState<{ processed: number; total: number; state: string } | null>(null)
   const [recall, setRecall] = useState<{ recallAtK: number; exactMs: number; annMs: number; queries: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const abort = useRef<AbortController | null>(null)
 
   const status = useAsync<VectorIndexStatus | null>(async () => {
@@ -175,18 +194,60 @@ function VectorPanel({ db }: { db: TalaDB }) {
     [db, nonce],
   )
 
-  async function doRebuild() {
+  /**
+   * Build (or rebuild) the graph. On an exact index this *promotes* it to a
+   * persistent HNSW graph — the engine has no "rebuild exact" — so the button
+   * says what it does, and "Back to exact index" undoes it.
+   */
+  async function doBuildGraph() {
     setBusy('rebuild')
-    abort.current = new AbortController()
+    setError(null)
+    setRecall(null)
+    const controller = new AbortController()
+    abort.current = controller
     try {
-      await collections(db).memories.rebuildVectorIndex('embedding', {
-        batchSize: 32,
-        signal: abort.current.signal,
+      await buildGraphIndex(db, {
+        signal: controller.signal,
         onProgress: (p) => setRebuild({ processed: p.processed, total: p.total, state: p.state }),
       })
-      setNonce((n) => n + 1)
+    } catch (err) {
+      if (!controller.signal.aborted) setError(message(err))
     } finally {
       setBusy(null)
+      setNonce((n) => n + 1)
+    }
+  }
+
+  async function doReturnToExact() {
+    setBusy('exact')
+    setError(null)
+    setRecall(null)
+    setRebuild(null)
+    try {
+      await returnToExactIndex(db)
+    } catch (err) {
+      setError(message(err))
+    } finally {
+      setBusy(null)
+      setNonce((n) => n + 1)
+    }
+  }
+
+  /**
+   * Tell the engine the device is short of memory, as the browser or OS would.
+   * The shared budget drops and decoded vectors and graphs are given up; the
+   * next search simply decodes again. "Recover" restores the budget.
+   */
+  async function doPressure(level: MemoryPressure) {
+    setBusy('pressure')
+    setError(null)
+    try {
+      await collections(db).memories.notifyMemoryPressure(level)
+    } catch (err) {
+      setError(message(err))
+    } finally {
+      setBusy(null)
+      setNonce((n) => n + 1)
     }
   }
 
@@ -201,18 +262,16 @@ function VectorPanel({ db }: { db: TalaDB }) {
     setBusy('recall')
     try {
       await loadEmbedder()
-      const queries = await Promise.all(
-        [
-          'bike chain replaced',
-          'aircon not cooling',
-          'lent to a friend',
-          'warranty expiring soon',
-          'strange noise when braking',
-          'bought a new appliance',
-          'moved to storage',
-          'coffee beans',
-        ].map((q) => embed(q)),
-      )
+      const queries = await embedMany([
+        'bike chain replaced',
+        'aircon not cooling',
+        'lent to a friend',
+        'warranty expiring soon',
+        'strange noise when braking',
+        'bought a new appliance',
+        'moved to storage',
+        'coffee beans',
+      ])
       const report = await collections(db).memories.measureVectorRecall(
         'embedding',
         queries,
@@ -221,18 +280,25 @@ function VectorPanel({ db }: { db: TalaDB }) {
         { efSearch: 100 },
       )
       setRecall(report)
+    } catch (err) {
+      setError(message(err))
     } finally {
       setBusy(null)
     }
   }
 
   const s = status.data
+  const isGraph = !!s && s.state !== 'flat'
 
   return (
     <Panel
       title="Vector index"
       badge={<EngineBadge engine="vector" size="xs" />}
-      description="Semantic search runs against an exact index here, on purpose: at a few hundred memories a full scan is well under a millisecond, so an approximate graph would be slower and less accurate at once. TalaDB builds a persistent HNSW graph instead once the collection is large enough to be worth it."
+      description={
+        isGraph && s.totalVectors < HNSW_FROM
+          ? `You built an HNSW graph to compare. The app would not choose one below ${HNSW_FROM.toLocaleString()} vectors: at this size it is approximate and does not save enough work to be faster. Measure it, then go back to exact.`
+          : 'Semantic search runs against an exact index here, on purpose: at a few hundred memories a full scan is well under a millisecond, so an approximate graph would be slower and less accurate at once. TalaDB builds a persistent HNSW graph instead once the collection is large enough to be worth it.'
+      }
     >
       {status.loading && <p className="text-sm muted">Reading index status…</p>}
 
@@ -264,6 +330,21 @@ function VectorPanel({ db }: { db: TalaDB }) {
               ['Memory pressure', cache.data.pressure],
             ]}
           />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {cache.data.pressure === 'normal' ? (
+              <button onClick={() => void doPressure('critical')} disabled={!!busy} className="btn-ghost text-sm">
+                Simulate memory pressure
+              </button>
+            ) : (
+              <button onClick={() => void doPressure('normal')} disabled={!!busy} className="btn-ghost text-sm">
+                Recover
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed muted">
+            Under pressure the budget shrinks and decoded vectors are released. Searches keep
+            working — they decode from disk again — so the app degrades in speed, never in answers.
+          </p>
         </div>
       )}
 
@@ -285,12 +366,19 @@ function VectorPanel({ db }: { db: TalaDB }) {
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button onClick={() => void doRebuild()} disabled={!!busy} className="btn-ghost text-sm">
-          {busy === 'rebuild' ? 'Rebuilding…' : 'Rebuild index'}
-        </button>
-        {s?.state !== 'flat' && (
+        {s && (
+          <button onClick={() => void doBuildGraph()} disabled={!!busy} className="btn-ghost text-sm">
+            {busy === 'rebuild' ? 'Building graph…' : isGraph ? 'Rebuild graph' : 'Try an HNSW graph'}
+          </button>
+        )}
+        {isGraph && (
           <button onClick={() => void doMeasure()} disabled={!!busy} className="btn-ghost text-sm">
             {busy === 'recall' ? 'Measuring…' : 'Measure recall vs exact'}
+          </button>
+        )}
+        {isGraph && s.totalVectors < HNSW_FROM && (
+          <button onClick={() => void doReturnToExact()} disabled={!!busy} className="btn-ghost text-sm">
+            {busy === 'exact' ? 'Switching…' : 'Back to exact index'}
           </button>
         )}
         {busy === 'rebuild' && (
@@ -299,6 +387,16 @@ function VectorPanel({ db }: { db: TalaDB }) {
           </button>
         )}
       </div>
+
+      {error && <p className="mt-3 text-xs text-[var(--color-ios-red)]">{error}</p>}
+
+      <p className="mt-4 text-xs muted">
+        At a few hundred memories the trade-offs above barely show.{' '}
+        <Link href="/lab" style={{ color: 'var(--color-ios-blue)' }}>
+          See them at 10,000 in the Scale Lab
+        </Link>
+        .
+      </p>
 
       {rebuild && (
         <p className="mt-3 text-xs muted">
@@ -328,6 +426,8 @@ function VectorPanel({ db }: { db: TalaDB }) {
     </Panel>
   )
 }
+
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
 const mib = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(bytes < 1024 * 1024 ? 2 : 1)} MiB`
 
@@ -437,10 +537,30 @@ function DataPanel({ db }: { db: TalaDB }) {
   const [error, setError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
+  const [resetDone, setResetDone] = useState(false)
+
   async function doExport(includeEmbeddings: boolean) {
     setBusy(true)
+    setError(null)
     try {
       downloadPack(await exportPack(db, { includeEmbeddings }))
+    } catch (err) {
+      setError(message(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doReset() {
+    setBusy(true)
+    setError(null)
+    setReport(null)
+    setResetDone(false)
+    try {
+      await resetDemoCorpus(db)
+      setResetDone(true)
+    } catch (err) {
+      setError(message(err))
     } finally {
       setBusy(false)
     }
@@ -453,7 +573,7 @@ function DataPanel({ db }: { db: TalaDB }) {
     try {
       setReport(await importPack(db, JSON.parse(await file.text())))
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(message(err))
     } finally {
       setBusy(false)
     }
@@ -474,6 +594,9 @@ function DataPanel({ db }: { db: TalaDB }) {
         <button onClick={() => fileInput.current?.click()} disabled={busy} className="btn-ghost text-sm">
           Import a pack
         </button>
+        <button onClick={() => void doReset()} disabled={busy} className="btn-ghost text-sm">
+          Reset demo data
+        </button>
         <input
           ref={fileInput}
           type="file"
@@ -492,7 +615,18 @@ function DataPanel({ db }: { db: TalaDB }) {
         <p className="mt-3 text-xs muted">
           Imported {report.entities} things, {report.memories} memories, {report.relations}{' '}
           connections.{' '}
-          {report.skipped > 0 && `${report.skipped} were already here and were left alone.`}
+          {report.skipped > 0 && `${report.skipped} were already here and were left alone. `}
+          {report.invalid > 0 && (
+            <span className="text-[var(--color-ios-red)]">
+              {plural(report.invalid, 'row was', 'rows were')} not valid and could not be imported.
+            </span>
+          )}
+        </p>
+      )}
+
+      {resetDone && (
+        <p className="mt-3 text-xs muted">
+          The demo corpus is back as it shipped, dated up to today. Your own memories are untouched.
         </p>
       )}
 

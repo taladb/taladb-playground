@@ -1,6 +1,6 @@
 import type { TalaDB } from 'taladb'
-import { collections } from './schema'
-import { embed, isEmbedderReady, memoryEmbeddingText } from './embed'
+import { collections, EMBEDDING_MODEL } from './schema'
+import { embed, embedMany, isEmbedderReady, memoryEmbeddingText } from './embed'
 import type { Entity, MemoryType, RelationType, SourceType } from './types'
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ export async function saveMemory(db: TalaDB, input: NewMemory): Promise<string> 
   if (isEmbedderReady()) {
     try {
       embedding = await embed(memoryEmbeddingText(input.title, input.content))
-      embeddingModel = 'Xenova/all-MiniLM-L6-v2'
+      embeddingModel = EMBEDDING_MODEL
     } catch {
       // Deliberately swallowed — see the note above.
     }
@@ -213,20 +213,24 @@ export async function backfillEmbeddings(
     { $project: { _id: 1, title: 1, content: 1 } },
   ])
 
+  // A batch is one forward pass in the embedding worker, so the model is busy
+  // in bigger, fewer steps and the page in between only applies the writes.
+  const BATCH = 16
   let done = 0
-  for (const row of pending) {
+  for (let i = 0; i < pending.length; i += BATCH) {
     if (signal?.aborted) break
 
-    const vector = await embed(memoryEmbeddingText(row.title, row.content))
-    await memories.updateOne(
-      { _id: row._id } as never,
-      { $set: { embedding: vector, embeddingModel: 'Xenova/all-MiniLM-L6-v2' } },
-    )
+    const rows = pending.slice(i, i + BATCH)
+    const vectors = await embedMany(rows.map((row) => memoryEmbeddingText(row.title, row.content)))
+    for (const [j, row] of rows.entries()) {
+      await memories.updateOne(
+        { _id: row._id } as never,
+        { $set: { embedding: vectors[j], embeddingModel: EMBEDDING_MODEL } },
+      )
+    }
 
-    done++
+    done += rows.length
     onProgress(done, pending.length)
-    // Yield between documents so the main thread stays responsive.
-    await new Promise((r) => setTimeout(r))
   }
 
   return done
