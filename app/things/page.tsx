@@ -8,6 +8,9 @@ import { useAsync } from '@/lib/use-async'
 import { ENTITY_LABEL, plural } from '@/lib/format'
 import { EntityCard } from '../components/EntityCard'
 import { EngineBadge } from '../components/EngineBadge'
+import { PageHeader } from '../components/PageHeader'
+import { CardSkeleton } from '../components/Skeleton'
+import { Icon } from '../components/Icon'
 import { ENTITY_TYPES, type Entity, type EntityType } from '@/lib/types'
 
 /**
@@ -56,10 +59,11 @@ export default function ThingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-[28px] font-semibold tracking-tight md:text-4xl">Your Things</h1>
-        <EngineBadge engine={result.data?.searched ? 'keyword' : 'structured'} size="xs" />
-      </div>
+      <PageHeader
+        title="Things, people & places"
+        description="Everything your memories are about. Search by name, model or serial number — or browse by type."
+        aside={<EngineBadge engine={result.data?.searched ? 'keyword' : 'structured'} size="xs" />}
+      />
 
       <label htmlFor="thing-search" className="sr-only">
         Search your things
@@ -84,12 +88,8 @@ export default function ThingsPage() {
               setType(t)
               setCategory(null)
             }}
-            className="chip shrink-0 font-semibold"
-            style={
-              type === t
-                ? { background: 'var(--color-ios-blue)', color: '#fff' }
-                : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
-            }
+            aria-pressed={type === t}
+            className="pill"
           >
             {t === 'all' ? 'Everything' : `${ENTITY_LABEL[t]}s`}
           </button>
@@ -100,12 +100,8 @@ export default function ThingsPage() {
         <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setCategory(null)}
-            className="chip font-medium"
-            style={
-              category === null
-                ? { background: 'color-mix(in oklab, var(--color-ios-blue) 14%, transparent)', color: 'var(--color-ios-blue)' }
-                : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
-            }
+            aria-pressed={category === null}
+            className="pill min-h-7 text-[12.5px]"
           >
             All categories
           </button>
@@ -113,12 +109,8 @@ export default function ThingsPage() {
             <button
               key={c}
               onClick={() => setCategory(c === category ? null : c)}
-              className="chip font-medium"
-              style={
-                category === c
-                  ? { background: 'color-mix(in oklab, var(--color-ios-blue) 14%, transparent)', color: 'var(--color-ios-blue)' }
-                  : { background: 'var(--color-card)', color: 'var(--color-label-2)' }
-              }
+              aria-pressed={category === c}
+              className="pill min-h-7 text-[12.5px]"
             >
               {c}
             </button>
@@ -126,19 +118,23 @@ export default function ThingsPage() {
         </div>
       )}
 
-      <p className="text-xs muted">
+      <p className="text-xs muted" aria-live="polite">
         {result.loading ? 'Searching…' : plural(entities.length, 'result')}
         {!trimmed && category && ` in ${category}`}
       </p>
 
-      {entities.length === 0 && !result.loading ? (
+      {result.loading && !result.data ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
+          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} className="h-[74px]" />)}
+        </div>
+      ) : entities.length === 0 && !result.loading ? (
         <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
-          <span className="text-3xl" aria-hidden>
-            📦
-          </span>
+          <Icon name="box" className="muted-more h-7 w-7" strokeWidth={1.8} />
           <p className="text-[17px] font-semibold">Nothing matched</p>
           <p className="max-w-sm text-sm muted">
-            Try a different search, or another type of thing.
+            {trimmed
+              ? 'No name, model or serial number contains those words. Try fewer words, or Everything.'
+              : 'Nothing of this type yet.'}
           </p>
         </div>
       ) : (

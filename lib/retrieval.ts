@@ -6,6 +6,7 @@ import {
 } from './queries'
 import { locateEntity } from './graph'
 import { namesEntity } from './extract'
+import { money } from './format'
 import type { Entity, MemoryRow, MemoryType } from './types'
 
 // ---------------------------------------------------------------------------
@@ -30,9 +31,27 @@ export type Engine = 'structured' | 'keyword' | 'vector' | 'hybrid' | 'graph'
 export type Intent =
   | 'loans' | 'location' | 'spend' | 'warranty' | 'last_event' | 'decision' | 'open'
 
+/**
+ * How the ranked list is produced.
+ *
+ * `auto` is the full pipeline — an exact answer when the question has one,
+ * then the best ranking available (hybrid with the model loaded, BM25 without).
+ * The other three run one retriever on its own, with no answer step, so the
+ * same query can be compared across them.
+ */
+export type SearchMode = 'auto' | 'keyword' | 'semantic' | 'hybrid'
+
+/** The ranking that actually ran — `auto` resolves to one of these. */
+export type Ranker = 'keyword' | 'semantic' | 'hybrid'
+
+/** Which number `Evidence.score` is, so the UI can label it honestly. */
+export type ScoreKind = 'bm25' | 'cosine' | 'rrf'
+
 export interface Evidence {
   memory: MemoryRow
+  /** The engine's own score for this hit, unmodified. See `scoreKind`. */
   score: number
+  scoreKind: ScoreKind
   /** Position in the BM25 ranking, or null if keyword search didn't find it. */
   textRank: number | null
   /** Position in the vector ranking, or null if similarity search didn't find it. */
@@ -50,6 +69,8 @@ export interface Answer {
 
 export interface RecallResult {
   query: string
+  mode: SearchMode
+  ranker: Ranker
   intent: Intent
   answer: Answer | null
   evidence: Evidence[]
@@ -112,8 +133,28 @@ const TOP_K = 8
 interface Ranked {
   evidence: Evidence[]
   engines: Engine[]
+  ranker: Ranker
   semanticUsed: boolean
   execution: RecallResult['execution']
+}
+
+/** Thrown when a mode needs the embedding model and it is not loaded. */
+export class ModelRequiredError extends Error {
+  constructor() {
+    super('This search mode needs the embedding model. Turn on semantic search first.')
+    this.name = 'ModelRequiredError'
+  }
+}
+
+type Execution = NonNullable<RecallResult['execution']>
+
+function executionOf(e: Execution): Execution {
+  return {
+    path: e.path,
+    reason: e.reason,
+    distanceComputations: e.distanceComputations,
+    efSearch: e.efSearch,
+  }
 }
 
 /**
@@ -127,25 +168,54 @@ interface Ranked {
  * `textRank`/`vectorRank` come back per hit and are passed straight through to
  * the UI. They are the evidence that the fusion is real.
  */
-async function rank(db: TalaDB, query: string, filter?: Record<string, unknown>): Promise<Ranked> {
+async function rank(
+  db: TalaDB,
+  query: string,
+  want: Ranker | 'best',
+  filter?: Record<string, unknown>,
+): Promise<Ranked> {
   const { memories } = collections(db)
+  const ranker: Ranker = want === 'best' ? (isEmbedderReady() ? 'hybrid' : 'keyword') : want
 
-  if (!isEmbedderReady()) {
+  if (ranker === 'keyword') {
     const hits = await memories.searchText('content', query, TOP_K, filter as never)
     return {
       evidence: hits.map((h, i) => ({
         memory: stripVector(h.document),
         score: h.score,
+        scoreKind: 'bm25',
         textRank: i,
         vectorRank: null,
       })),
       engines: ['keyword'],
+      ranker,
       semanticUsed: false,
       execution: null,
     }
   }
 
+  // Never start a 45 MB download as a side effect of typing a query — the
+  // model is loaded only when someone asks for it.
+  if (!isEmbedderReady()) throw new ModelRequiredError()
   const vector = await embed(query)
+
+  if (ranker === 'semantic') {
+    // One call returns the hits and the execution record together.
+    const result = await memories.searchVectors('embedding', vector, TOP_K, filter)
+    return {
+      evidence: result.hits.map((h, i) => ({
+        memory: stripVector(h.document as MemoryRow & { embedding?: number[] }),
+        score: h.score,
+        scoreKind: 'cosine',
+        textRank: null,
+        vectorRank: i,
+      })),
+      engines: ['vector'],
+      ranker,
+      semanticUsed: true,
+      execution: executionOf(result.execution),
+    }
+  }
 
   const [hits, probe] = await Promise.all([
     memories.hybridSearch(
@@ -173,19 +243,14 @@ async function rank(db: TalaDB, query: string, filter?: Record<string, unknown>)
     evidence: hits.map((h) => ({
       memory: stripVector(h.document),
       score: h.score,
+      scoreKind: 'rrf',
       textRank: h.textRank,
       vectorRank: h.vectorRank,
     })),
     engines: ['keyword', 'vector', 'hybrid'],
+    ranker,
     semanticUsed: true,
-    execution: probe
-      ? {
-          path: probe.execution.path,
-          reason: probe.execution.reason,
-          distanceComputations: probe.execution.distanceComputations,
-          efSearch: probe.execution.efSearch,
-        }
-      : null,
+    execution: probe ? executionOf(probe.execution) : null,
   }
 }
 
@@ -197,7 +262,6 @@ function stripVector(doc: MemoryRow & { embedding?: number[] }): MemoryRow {
 
 // --- deterministic answers --------------------------------------------------
 
-const money = (n: number) => `₱${Math.round(n).toLocaleString()}`
 const when = (ts: number) =>
   new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -419,9 +483,32 @@ async function answerDecision(db: TalaDB, entity: Entity | null, evidence: Evide
  * which is the honest outcome, and better than a confident sentence assembled
  * out of nothing.
  */
-export async function recall(db: TalaDB, query: string): Promise<RecallResult> {
+export async function recall(
+  db: TalaDB,
+  query: string,
+  opts: { mode?: SearchMode } = {},
+): Promise<RecallResult> {
   const started = performance.now()
   const trimmed = query.trim()
+  const mode = opts.mode ?? 'auto'
+
+  // A single-retriever mode is a comparison, not a question: rank, and stop.
+  if (mode !== 'auto') {
+    const ranked = await rank(db, trimmed, mode)
+    const totalMs = performance.now() - started
+    return {
+      query: trimmed,
+      mode,
+      ranker: ranked.ranker,
+      intent: 'open',
+      answer: null,
+      evidence: ranked.evidence,
+      engines: ranked.engines,
+      semanticUsed: ranked.semanticUsed,
+      timings: { totalMs, structuredMs: 0, retrievalMs: totalMs },
+      execution: ranked.execution,
+    }
+  }
 
   const intent = classify(trimmed)
 
@@ -432,7 +519,7 @@ export async function recall(db: TalaDB, query: string): Promise<RecallResult> {
   // round trip to the database worker, and the embedder is the slowest step of
   // all, so running them one after another made the question wait for the sum.
   const retrievalStart = performance.now()
-  const rankedPromise = rank(db, trimmed).then((ranked) => ({
+  const rankedPromise = rank(db, trimmed, 'best').then((ranked) => ({
     ranked,
     retrievalMs: performance.now() - retrievalStart,
   }))
@@ -476,6 +563,8 @@ export async function recall(db: TalaDB, query: string): Promise<RecallResult> {
 
   return {
     query: trimmed,
+    mode,
+    ranker: ranked.ranker,
     intent,
     answer,
     evidence: ranked.evidence,

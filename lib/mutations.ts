@@ -1,7 +1,9 @@
 import type { TalaDB } from 'taladb'
-import { collections } from './schema'
-import { embed, isEmbedderReady, memoryEmbeddingText } from './embed'
-import type { Entity, MemoryType, RelationType, SourceType } from './types'
+import { collections, EMBEDDING_MODEL } from './schema'
+import { embed, embedMany, isEmbedderReady, memoryEmbeddingText } from './embed'
+import { openLoans } from './queries'
+import { CURRENCY } from './format'
+import type { Entity, MemoryRow, MemoryType, RelationType, SourceType } from './types'
 
 // ---------------------------------------------------------------------------
 // Writes.
@@ -62,7 +64,7 @@ export async function saveMemory(db: TalaDB, input: NewMemory): Promise<string> 
   if (isEmbedderReady()) {
     try {
       embedding = await embed(memoryEmbeddingText(input.title, input.content))
-      embeddingModel = 'Xenova/all-MiniLM-L6-v2'
+      embeddingModel = EMBEDDING_MODEL
     } catch {
       // Deliberately swallowed — see the note above.
     }
@@ -79,7 +81,7 @@ export async function saveMemory(db: TalaDB, input: NewMemory): Promise<string> 
     ...(input.subject?._id ? { subjectId: input.subject._id } : {}),
     ...(input.actor?._id ? { actorId: input.actor._id } : {}),
     ...(input.place?._id ? { placeId: input.place._id } : {}),
-    ...(input.amount !== undefined ? { amount: input.amount, currency: 'PHP' } : {}),
+    ...(input.amount !== undefined ? { amount: input.amount, currency: CURRENCY } : {}),
     ...(input.tags?.length ? { tags: input.tags } : {}),
     sourceType: input.sourceType,
     // A memory the user reviewed and saved is confirmed by definition — that
@@ -125,6 +127,122 @@ async function applySideEffects(db: TalaDB, memoryId: string, input: NewMemory):
   const servicing: MemoryType[] = ['maintenance', 'repair', 'replacement', 'installation']
   if (servicing.includes(input.memoryType) && input.subject?._id && input.actor?._id) {
     await addRelation(db, input.subject._id, input.actor._id, 'serviced_by', memoryId)
+  }
+}
+
+export interface MemoryEdit {
+  title: string
+  content: string
+  occurredAt: number
+  /** `null` clears the amount. */
+  amount: number | null
+}
+
+/**
+ * Edit a memory's words, date or amount.
+ *
+ * The kind and the things it names are not editable here, on purpose: those
+ * drive side effects (a loan's edge, a move's location), and rewiring them
+ * from an edit form would make the history say something nobody recorded.
+ *
+ * When the text changes, the old vector no longer describes it. With the model
+ * loaded the memory is embedded again in the same write; without it the stale
+ * vector is removed, so search by meaning can never match words the memory no
+ * longer contains. Settings → "Embed remaining memories" puts one back.
+ */
+export async function updateMemory(db: TalaDB, id: string, edit: MemoryEdit): Promise<void> {
+  const { memories } = collections(db)
+
+  const [current] = await memories.aggregate<{ title: string; content: string }>([
+    { $match: { _id: id } as never },
+    { $project: { _id: 1, title: 1, content: 1 } },
+  ])
+  if (!current) throw new Error('That memory is no longer on this device.')
+
+  const title = edit.title.trim()
+  const content = edit.content.trim()
+  if (!title) throw new Error('A memory needs a title.')
+
+  const textChanged = title !== current.title || content !== current.content
+  let embedding: number[] | undefined
+  if (textChanged && isEmbedderReady()) {
+    try {
+      embedding = await embed(memoryEmbeddingText(title, content))
+    } catch {
+      // Same rule as saveMemory: an embedding failure never costs the edit.
+    }
+  }
+
+  const $set: Record<string, unknown> = {
+    title,
+    content,
+    occurredAt: edit.occurredAt,
+    updatedAt: Date.now(),
+    ...(edit.amount !== null ? { amount: edit.amount, currency: CURRENCY } : {}),
+    ...(embedding ? { embedding, embeddingModel: EMBEDDING_MODEL } : {}),
+  }
+  const $unset: Record<string, true> = {
+    ...(edit.amount === null ? { amount: true, currency: true } : {}),
+    ...(textChanged && !embedding ? { embedding: true, embeddingModel: true } : {}),
+  }
+
+  await memories.updateOne(
+    { _id: id } as never,
+    { $set, ...(Object.keys($unset).length ? { $unset } : {}) } as never,
+  )
+}
+
+/**
+ * Delete a memory, and undo what saving it did to the world around it.
+ *
+ * Loans and locations are read from the history, so most of this happens on
+ * its own: delete a return and the loan it closed is open again; delete a move
+ * and the move before it is the latest. Two things are stored rather than
+ * derived and are put right here — the edges this memory asserted, and a
+ * thing's `parentId` when this move was what set it.
+ */
+export async function deleteMemory(db: TalaDB, id: string): Promise<void> {
+  const { memories, relations, entities } = collections(db)
+
+  const [memory] = await memories.aggregate<MemoryRow>([
+    { $match: { _id: id } as never },
+    { $project: { embedding: 0 } },
+  ])
+  if (!memory) return
+
+  await relations.deleteMany({ memoryId: id })
+  await memories.deleteOne({ _id: id } as never)
+
+  if (memory.memoryType === 'movement' && memory.subjectId && memory.placeId) {
+    const subject = await entities.findOne({ _id: memory.subjectId } as never)
+    if (subject?.parentId === memory.placeId) {
+      const [previous] = await memories.aggregate<MemoryRow>([
+        { $match: { subjectId: memory.subjectId, memoryType: 'movement' } as never },
+        { $sort: { occurredAt: -1 } },
+        { $limit: 1 },
+        { $project: { embedding: 0 } },
+      ])
+      // With no earlier move on record there is nowhere better to point, so
+      // the thing stays where this move put it.
+      if (previous?.placeId) {
+        await entities.updateOne(
+          { _id: memory.subjectId } as never,
+          { $set: { parentId: previous.placeId, updatedAt: Date.now() } },
+        )
+        await addRelation(db, memory.subjectId, previous.placeId, 'stored_at', previous._id)
+      }
+    }
+  }
+
+  // Saving a return removed the live "borrowed by" edge. If deleting it leaves
+  // the loan open again, the edge comes back with it.
+  if (memory.memoryType === 'return' && memory.subjectId && memory.actorId) {
+    const reopened = (await openLoans(db)).find(
+      (l) => l.memory.subjectId === memory.subjectId && l.memory.actorId === memory.actorId,
+    )
+    if (reopened) {
+      await addRelation(db, memory.subjectId, memory.actorId, 'borrowed_by', reopened.memory._id)
+    }
   }
 }
 
@@ -213,20 +331,24 @@ export async function backfillEmbeddings(
     { $project: { _id: 1, title: 1, content: 1 } },
   ])
 
+  // A batch is one forward pass in the embedding worker, so the model is busy
+  // in bigger, fewer steps and the page in between only applies the writes.
+  const BATCH = 16
   let done = 0
-  for (const row of pending) {
+  for (let i = 0; i < pending.length; i += BATCH) {
     if (signal?.aborted) break
 
-    const vector = await embed(memoryEmbeddingText(row.title, row.content))
-    await memories.updateOne(
-      { _id: row._id } as never,
-      { $set: { embedding: vector, embeddingModel: 'Xenova/all-MiniLM-L6-v2' } },
-    )
+    const rows = pending.slice(i, i + BATCH)
+    const vectors = await embedMany(rows.map((row) => memoryEmbeddingText(row.title, row.content)))
+    for (const [j, row] of rows.entries()) {
+      await memories.updateOne(
+        { _id: row._id } as never,
+        { $set: { embedding: vectors[j], embeddingModel: EMBEDDING_MODEL } },
+      )
+    }
 
-    done++
+    done += rows.length
     onProgress(done, pending.length)
-    // Yield between documents so the main thread stays responsive.
-    await new Promise((r) => setTimeout(r))
   }
 
   return done

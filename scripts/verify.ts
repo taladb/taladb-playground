@@ -13,20 +13,30 @@
 import { readFile } from 'node:fs/promises'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { openDB, deriveDocId, type TalaDB } from 'taladb'
-import { collections, ensureIndexes, ensureVectorIndex, VECTOR_DIM } from '../lib/schema'
+import { openDB, type TalaDB } from 'taladb'
+import {
+  buildGraphIndex, collections, ensureIndexes, ensureVectorIndex, HNSW_GRAPH, returnToExactIndex,
+} from '../lib/schema'
+import { rebaseOffset, writeCorpus, type Corpus } from '../lib/corpus'
+import {
+  benchAnn, benchDocuments, benchExact, buildLabGraph, labCollection, labQueries, populate,
+} from '../lib/lab'
 import {
   openLoans, spendForEntity, warrantiesExpiring, entityTimelinePipeline, stats, listEntities,
+  isSampleMemory, ownMemoryCount,
 } from '../lib/queries'
 import { locateEntity, relatedEntities, contentsOf } from '../lib/graph'
-import { classify, resolveEntity } from '../lib/retrieval'
+import { classify, ModelRequiredError, recall, resolveEntity } from '../lib/retrieval'
+import { highlight, queryTerms, termsFound } from '../lib/highlight'
+import { money } from '../lib/format'
 import { extractMemory } from '../lib/extract'
 import { exportPack, importPack } from '../lib/memorypack'
-import { createEntity } from '../lib/mutations'
+import { createEntity, deleteMemory, saveMemory, updateMemory } from '../lib/mutations'
 
 const SEED = join(import.meta.dirname ?? '.', '..', 'public', 'seed')
 const DB_FILE = join(import.meta.dirname ?? '.', '..', '.verify.db')
 const IMPORT_FILE = join(import.meta.dirname ?? '.', '..', '.verify-import.db')
+const LAB_FILE = join(import.meta.dirname ?? '.', '..', '.verify-lab.db')
 
 let failures = 0
 
@@ -35,60 +45,16 @@ function check(name: string, ok: boolean, detail = '') {
   if (!ok) failures++
 }
 
-async function seed(db: TalaDB) {
-  const corpus = JSON.parse(await readFile(join(SEED, 'corpus.json'), 'utf8'))
+async function loadCorpus(): Promise<{ corpus: Corpus; vectors: Float32Array }> {
+  const corpus = JSON.parse(await readFile(join(SEED, 'corpus.json'), 'utf8')) as Corpus
   const buf = await readFile(join(SEED, 'embeddings.bin'))
-  const vectors = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4)
+  return { corpus, vectors: new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4) }
+}
 
-  const { entities, memories, relations } = collections(db)
-  const entityId = (slug: string) => deriveDocId('entities', slug)
-
-  await entities.insertMany(
-    corpus.entities.map(({ parentSlug, ...e }: Record<string, unknown> & { parentSlug?: string }) => ({
-      ...e,
-      _id: entityId(e.slug as string),
-      ...(parentSlug ? { parentId: entityId(parentSlug) } : {}),
-      createdAt: (e.purchasedAt as number) ?? Date.now(),
-      updatedAt: Date.now(),
-    })),
-  )
-
-  const nameBySlug = new Map<string, string>(
-    corpus.entities.map((e: { slug: string; name: string }) => [e.slug, e.name]),
-  )
-
-  await memories.insertMany(
-    corpus.memories.map((m: Record<string, unknown>, i: number) => ({
-      _id: deriveDocId('memories', `${m.occurredAt}-${m.title}-${i}`),
-      memoryType: m.memoryType,
-      title: m.title,
-      content: m.content,
-      occurredAt: m.occurredAt,
-      entityIds: (m.entitySlugs as string[]).map(entityId),
-      entityNames: (m.entitySlugs as string[]).map((s) => nameBySlug.get(s) ?? s),
-      ...(m.subjectSlug ? { subjectId: entityId(m.subjectSlug as string) } : {}),
-      ...(m.actorSlug ? { actorId: entityId(m.actorSlug as string) } : {}),
-      ...(m.placeSlug ? { placeId: entityId(m.placeSlug as string) } : {}),
-      ...(m.amount !== undefined ? { amount: m.amount, currency: 'PHP' } : {}),
-      ...(m.tags ? { tags: m.tags } : {}),
-      sourceType: m.sourceType,
-      confidence: m.confidence,
-      embedding: Array.from(vectors.subarray(i * VECTOR_DIM, (i + 1) * VECTOR_DIM)),
-      embeddingModel: corpus.embeddingModel,
-      createdAt: m.occurredAt,
-      updatedAt: m.occurredAt,
-    })),
-  )
-
-  await relations.insertMany(
-    corpus.relations.map((r: { sourceSlug: string; targetSlug: string; relationType: string }) => ({
-      _id: deriveDocId('relations', `${r.sourceSlug}|${r.targetSlug}|${r.relationType}`),
-      sourceId: entityId(r.sourceSlug),
-      targetId: entityId(r.targetSlug),
-      relationType: r.relationType,
-      createdAt: Date.now(),
-    })),
-  )
+/** The same write the browser's first run does, via the same module. */
+async function seed(db: TalaDB) {
+  const { corpus, vectors } = await loadCorpus()
+  await writeCorpus(db, corpus, vectors)
 }
 
 async function main() {
@@ -120,7 +86,7 @@ async function main() {
   check('timeline projects the vector away', !('embedding' in (timeline[0] ?? {})))
 
   const spend = await spendForEntity(db, bike!._id!)
-  check('spend aggregation', spend.total > 0, `₱${spend.total.toLocaleString()} over ${spend.n} entries`)
+  check('spend aggregation', spend.total > 0, `$${spend.total.toLocaleString()} over ${spend.n} entries`)
 
   const things = await listEntities(db, { entityType: 'thing' })
   check('compound-index browse', things.length > 15, `${things.length} things`)
@@ -128,6 +94,25 @@ async function main() {
   const warranties = await warrantiesExpiring(db, 400)
   check('warranty range scan', warranties.length > 0,
     warranties.map((w) => `${w.entity.name} in ${w.daysLeft}d`).join(', '))
+
+  console.log('\nDemo corpus is anchored to today')
+  const [newest] = await collections(db).memories.aggregate<{ occurredAt: number }>([
+    { $sort: { occurredAt: -1 } }, { $limit: 1 }, { $project: { occurredAt: 1 } },
+  ])
+  const newestAgo = Math.floor((Date.now() - newest.occurredAt) / 86_400_000)
+  check('newest memory is recent, however old the corpus file is', newestAgo >= 0 && newestAgo <= 7,
+    `${newestAgo} days ago`)
+  const homeWarranties = await warrantiesExpiring(db, 60)
+  check('home screen has a warranty ending within 60 days', homeWarranties.length > 0,
+    homeWarranties.map((w) => `${w.entity.name} in ${w.daysLeft}d`).join(', '))
+  const washer = await collections(db).entities.findOne({ slug: 'washing-machine' })
+  const washerNote = await collections(db).memories.findOne({
+    title: 'Washing machine warranty expires this month',
+  })
+  const washerDate = new Date(washer!.warrantyExpiresAt!)
+  const spelled = `${washerDate.getUTCDate()} ${washerDate.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })} ${washerDate.getUTCFullYear()}`
+  check('dates in prose moved with the date fields', washerNote!.content.includes(spelled),
+    `field ${washerDate.toISOString().slice(0, 10)}, text says "${spelled}"`)
 
   console.log('\nLoans (set difference, append-only)')
   const loans = await openLoans(db)
@@ -178,6 +163,32 @@ async function main() {
     exec.execution.path === 'exact' && exec.execution.distanceComputations === vstatus.totalVectors,
     `path=${exec.execution.path}, distances=${exec.execution.distanceComputations}`)
 
+  console.log('\nSettings: the graph experiment and the cache')
+  const built = await buildGraphIndex(db)
+  const graph = await collections(db).memories.vectorIndexStatus('embedding')
+  check('"Try an HNSW graph" builds one with the app\'s shape',
+    built.state === 'ready' && graph.state === 'ready' && graph.options?.m === HNSW_GRAPH.m,
+    `${graph.state}, M=${graph.options?.m}, ${graph.indexedVectors} indexed`)
+  const viaGraph = await collections(db).memories.searchVectors('embedding', probe!.embedding as number[], 5)
+  check('search now walks the graph', viaGraph.execution.path === 'hnsw',
+    `path=${viaGraph.execution.path}, distances=${viaGraph.execution.distanceComputations}`)
+  const recallReport = await collections(db).memories.measureVectorRecall(
+    'embedding', [probe!.embedding as number[]], 10, undefined, { efSearch: 100 })
+  check('recall vs exact is measurable on the graph', recallReport.recallAtK > 0,
+    `recall@10 ${(recallReport.recallAtK * 100).toFixed(0)}%`)
+  const back = await returnToExactIndex(db)
+  const afterBack = await collections(db).memories.searchVectors('embedding', probe!.embedding as number[], 5)
+  check('"Back to exact index" restores the exact scan',
+    back === 'flat' && afterBack.execution.path === 'exact', `path=${afterBack.execution.path}`)
+
+  // Prime the cache with one exact search, then squeeze it.
+  const baseline = await collections(db).memories.vectorCacheStats()
+  const squeezed = await collections(db).memories.notifyMemoryPressure('critical')
+  const recovered = await collections(db).memories.notifyMemoryPressure('normal')
+  check('memory pressure shrinks the budget and recovery restores it',
+    squeezed.budgetBytes < baseline.budgetBytes && recovered.budgetBytes === baseline.budgetBytes,
+    `${baseline.budgetBytes} → ${squeezed.budgetBytes} → ${recovered.budgetBytes} bytes, held ${baseline.retainedBytes} → ${squeezed.retainedBytes}`)
+
   console.log('\nHybrid (RRF fusion)')
   const hybrid = await collections(db).memories.hybridSearch(
     { textField: 'content', text: 'chain replacement' },
@@ -211,13 +222,13 @@ async function main() {
   console.log('\nCapture extraction')
   const proposal = await extractMemory(
     db,
-    'Changed the bicycle chain today at CycleHouse for ₱1,200.',
+    'Changed the bicycle chain today at CycleHouse for $40.',
     new Date('2026-09-13T10:00:00Z'),
   )
   check('classified the event', proposal.memoryType.value === 'replacement', proposal.memoryType.reason)
   check('parsed the date', new Date(proposal.occurredAt.value).toISOString().slice(0, 10) === '2026-09-13',
     proposal.occurredAt.reason)
-  check('parsed the amount', proposal.amount?.value === 1200, proposal.amount?.reason)
+  check('parsed the amount', proposal.amount?.value === 40, proposal.amount?.reason)
   check('resolved the subject', proposal.subject?.value.slug === 'trek-fx3', proposal.subject?.value.name)
   check('resolved the provider', proposal.actor?.value.slug === 'cyclehouse', proposal.actor?.value.name)
 
@@ -251,19 +262,35 @@ async function main() {
   })
   const thin = await extractMemory(
     db,
-    'Descaled the kettle today for ₱350.',
+    'Descaled the kettle today for $12.50.',
     new Date('2026-09-14T10:00:00Z'),
   )
   check('resolves an entity named only by its category', thin.subject?.value._id === kettle._id,
     thin.subject ? `${thin.subject.value.name} — ${thin.subject.reason}` : 'no subject resolved')
-  check('and the amount still parses alongside it', thin.amount?.value === 350, thin.amount?.reason)
+  check('and the amount still parses alongside it', thin.amount?.value === 12.5, thin.amount?.reason)
+
+  console.log('\nRe-seeding keeps what the visitor wrote')
+  const own = await saveMemory(db, {
+    memoryType: 'note', title: 'My own note', content: 'Written by the visitor, not the corpus.',
+    // As /capture writes it: the chosen day, at 09:00.
+    occurredAt: new Date(new Date().setHours(9, 0, 0, 0)).getTime(), subject: bike, actor: null, place: null, mentioned: [],
+    sourceType: 'user_entered',
+  })
+  const before = await collections(db).memories.count()
+  const { corpus, vectors } = await loadCorpus()
+  await writeCorpus(db, corpus, vectors)
+  check('visitor memory survives a re-seed', !!(await collections(db).memories.findOne({ _id: own } as never)))
+  check('visitor entity survives a re-seed', !!(await collections(db).entities.findOne({ _id: kettle._id } as never)))
+  check('re-seed replaces the corpus rather than duplicating it',
+    (await collections(db).memories.count()) === before, `${before} memories before and after`)
+  check('rebase offset is whole days', rebaseOffset(corpus) % 86_400_000 === 0)
 
   console.log('\nExport')
   const pack = await exportPack(db)
   check('pack excludes vectors by default', !pack.memories.some((m) => 'embedding' in m))
   check('pack carries rebuild metadata', pack.embedding.model.includes('MiniLM'),
     `${pack.embedding.model}, ${pack.embedding.dimensions}d`)
-  check('pack counts match', pack.counts.memories === counts.memoryCount)
+  check('pack counts match', pack.counts.memories === await collections(db).memories.count())
 
   console.log('\nImport')
   await rm(IMPORT_FILE, { force: true, recursive: true }).catch(() => {})
@@ -280,8 +307,158 @@ async function main() {
     again.entities + again.memories + again.relations === 0 &&
       again.skipped === pack.counts.entities + pack.counts.memories + pack.counts.relations,
     `${again.skipped} skipped`)
+  check('re-import reports nothing as invalid', again.invalid === 0)
+
+  // A pack edited by hand: one memory loses its required title.
+  const damaged = JSON.parse(JSON.stringify(pack))
+  damaged.entities = []
+  damaged.relations = []
+  damaged.memories = damaged.memories.slice(0, 3).map((m: Record<string, unknown>, i: number) =>
+    i === 1 ? { ...m, _id: undefined, title: '' } : { ...m, _id: undefined })
+  const partial = await importPack(fresh, damaged)
+  check('a damaged row is reported as invalid, not as already here',
+    partial.memories === 2 && partial.invalid === 1 && partial.skipped === 0,
+    `${partial.memories} written, ${partial.invalid} invalid, ${partial.skipped} skipped`)
   await fresh.close()
   await rm(IMPORT_FILE, { force: true, recursive: true }).catch(() => {})
+
+  console.log('\nScale lab (the /lab page, at 2,000)')
+  await rm(LAB_FILE, { force: true, recursive: true }).catch(() => {})
+  const lab = await openDB(LAB_FILE)
+  await populate(lab, 2_000)
+  check('lab writes into its own database', (await labCollection(lab).count()) === 2_000 &&
+    (await collections(db).memories.count()) < 1_000)
+  const labDocs = await benchDocuments(lab, 3)
+  check('lab document benchmarks run', labDocs.monthRangeRows > 0,
+    `oldest page ${labDocs.oldestPageMs.toFixed(2)} ms, ${labDocs.monthRangeRows} rows in a month`)
+  const labQ = labQueries(5)
+  const labExact = await benchExact(lab, labQ)
+  check('lab exact scan compares every vector', labExact.distances === 2_000)
+  await buildLabGraph(lab, { quantization: 'binary' })
+  const labAnn = await benchAnn(lab, labQ, 40)
+  check('lab graph search runs on the graph and reports its recall',
+    labAnn.path === 'hnsw' && labAnn.recallAt10 !== null && labAnn.distances < 2_000,
+    `ef ${labAnn.efSearch}, ${labAnn.distances} distances, recall@10 ${((labAnn.recallAt10 ?? 0) * 100).toFixed(0)}%`)
+  await lab.close()
+  await rm(LAB_FILE, { force: true, recursive: true }).catch(() => {})
+
+  console.log('\nAmounts are US dollars')
+  const currencies = await collections(db).memories.aggregate<{ _id: string | null; n: number }>([
+    { $match: { amount: { $exists: true } } as never },
+    { $group: { _id: '$currency', n: { $sum: 1 } } },
+  ])
+  check('every corpus amount is recorded in USD', currencies.length === 1 && currencies[0]._id === 'USD',
+    currencies.map((c) => `${c._id}: ${c.n}`).join(', '))
+  check('dollars print with cents only when there are cents',
+    money(40) === '$40' && money(38.72) === '$38.72' && money(24500) === '$24,500',
+    `${money(40)}, ${money(38.72)}, ${money(24500)}`)
+  check('an amount saved in pesos before the switch still reads as pesos', money(1200, 'PHP').startsWith('₱'),
+    money(1200, 'PHP'))
+  const texts = await collections(db).memories.aggregate<{ title: string; content: string }>([
+    { $project: { _id: 0, title: 1, content: 1 } },
+  ])
+  check('no peso sign is left in the memory text', !texts.some((m) => `${m.title} ${m.content}`.includes('₱')))
+
+  console.log('\nSearch modes (the /recall page)')
+  const kw = await recall(db, 'chain replaced', { mode: 'keyword' })
+  check('keyword mode ranks by BM25 alone, with no answer step',
+    kw.ranker === 'keyword' && kw.answer === null && kw.evidence.length > 0 &&
+      kw.evidence.every((e, i) => e.scoreKind === 'bm25' && e.textRank === i && e.vectorRank === null),
+    `${kw.evidence.length} hits, top score ${kw.evidence[0]?.score.toFixed(2)}`)
+  check('BM25 scores come back in descending order',
+    kw.evidence.every((e, i, all) => i === 0 || all[i - 1].score >= e.score))
+  const auto = await recall(db, 'who has my camera?')
+  check('smart mode still answers exactly, ranking by keyword without the model',
+    auto.mode === 'auto' && auto.ranker === 'keyword' && auto.answer?.engine === 'structured')
+  let refused = false
+  try {
+    await recall(db, 'clicking noise', { mode: 'semantic' })
+  } catch (err) {
+    refused = err instanceof ModelRequiredError
+  }
+  check('semantic mode refuses rather than downloading the model on its own', refused)
+
+  console.log('\nMatched-term highlighting')
+  const terms = queryTerms('Where is my drill? The clicking noise')
+  check('query terms drop stopwords', terms.join(',') === 'drill,clicking,noise', terms.join(','))
+  const marked = highlight('The drill clicks; drills are noisy. Chain changed.', [...terms, 'chain'])
+  check('highlight marks words sharing a stem, and only those',
+    marked.filter((m) => m.hit).map((m) => m.text).join(',') === 'drill,clicks,drills,Chain',
+    marked.filter((m) => m.hit).map((m) => m.text).join(','))
+  check('highlighting keeps the text intact', marked.map((m) => m.text).join('') === 'The drill clicks; drills are noisy. Chain changed.')
+  check('terms found reports which words a result shares', termsFound(['A loud rattle'], ['clicking', 'rattle']).join() === 'rattle')
+
+  console.log('\nSample memories are told apart from the visitor\'s own')
+  const allRows = await collections(db).memories.aggregate<{ _id: string; sample?: true }>([
+    { $project: { _id: 1, sample: 1 } },
+  ])
+  const mine = allRows.filter((m) => !isSampleMemory(m)).map((m) => m._id)
+  check('every corpus memory reads as sample, every saved one as the visitor\'s',
+    mine.length === 1 && mine[0] === own, `${allRows.length - mine.length} sample, ${mine.length} own`)
+
+  check('the own-memory count is the engine\'s, and agrees', (await ownMemoryCount(db)) === 1)
+  const flagged = await collections(db).memories.findOne({ _id: allRows.find((m) => m._id !== own)!._id } as never)
+  check('the sample flag survives the collection schema', flagged?.sample === true)
+
+  console.log('\nEditing a memory')
+  const [target] = await collections(db).memories.aggregate<{ _id: string; title: string; amount?: number }>([
+    { $match: { memoryType: 'maintenance', amount: { $exists: true } } as never },
+    { $limit: 1 },
+    { $project: { _id: 1, title: 1, amount: 1 } },
+  ])
+  const embeddedBefore = (await stats(db)).embedded
+  await updateMemory(db, target._id, {
+    title: target.title, content: 'Rewritten with the word zeppelin in it.', occurredAt: Date.now() - 86_400_000, amount: null,
+  })
+  const edited = await collections(db).memories.findOne({ _id: target._id } as never)
+  check('edit writes the new text and date', edited?.content.includes('zeppelin') === true)
+  check('clearing the amount removes it, currency too', edited?.amount === undefined && edited?.currency === undefined)
+  check('changed text without the model drops the stale vector', edited?.embedding === undefined)
+  const embeddedAfter = (await stats(db)).embedded
+  check('and the vector index lets go of it', embeddedAfter === embeddedBefore - 1,
+    `${embeddedBefore} → ${embeddedAfter} indexed`)
+  const zeppelin = await collections(db).memories.searchText('content', 'zeppelin', 3)
+  check('the full-text index sees the edit at once', zeppelin[0]?.document._id === target._id)
+  let rejected = false
+  try {
+    await updateMemory(db, target._id, { title: '  ', content: 'x', occurredAt: Date.now(), amount: null })
+  } catch {
+    rejected = true
+  }
+  check('an empty title is refused', rejected)
+
+  console.log('\nDeleting a memory')
+  await deleteMemory(db, own)
+  check('a deleted memory is gone', !(await collections(db).memories.findOne({ _id: own } as never)))
+
+  const drillBefore = await locateEntity(db, drill!._id!)
+  const places = await listEntities(db, { entityType: 'place' })
+  const elsewhere = places.find((p) => !drillBefore?.path.some((q) => q._id === p._id))!
+  const move = await saveMemory(db, {
+    memoryType: 'movement', title: 'Drill moved for a test', content: 'Moved it.', occurredAt: Date.now(),
+    subject: drill, actor: null, place: elsewhere, mentioned: [], sourceType: 'user_entered',
+  })
+  const relocated = await locateEntity(db, drill!._id!)
+  check('saving a move relocates the thing', relocated?.path.at(-1)?._id === elsewhere._id, relocated?.path.map((p) => p.name).join(' → '))
+  await deleteMemory(db, move)
+  const restored = await locateEntity(db, drill!._id!)
+  check('deleting the move puts it back where it was',
+    restored?.path.map((p) => p._id).join() === drillBefore?.path.map((p) => p._id).join(),
+    restored?.path.map((p) => p.name).join(' → '))
+  check('and removes the edge the move asserted',
+    (await collections(db).relations.count({ memoryId: move } as never)) === 0)
+
+  const [drillReturn] = await collections(db).memories.aggregate<{ _id: string; actorId?: string }>([
+    { $match: { subjectId: drill!._id!, memoryType: 'return' } as never },
+    { $sort: { occurredAt: -1 } },
+    { $limit: 1 },
+    { $project: { _id: 1, actorId: 1 } },
+  ])
+  await deleteMemory(db, drillReturn._id)
+  const reopened = (await openLoans(db)).find((l) => l.entity?._id === drill!._id)
+  check('deleting a return reopens the loan it closed', !!reopened, reopened ? `with ${reopened.borrower?.name}` : '')
+  check('and restores the live "borrowed by" edge',
+    !!(await collections(db).relations.findOne({ sourceId: drill!._id!, relationType: 'borrowed_by' } as never)))
 
   await db.close()
   await rm(DB_FILE, { force: true, recursive: true }).catch(() => {})

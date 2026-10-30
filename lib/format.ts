@@ -1,9 +1,26 @@
 import type { MemoryType } from './types'
 
-export function money(n: number | undefined, currency = 'PHP'): string {
+/** The currency new memories are recorded in. */
+export const CURRENCY = 'USD'
+
+/**
+ * An amount in its own currency. Cents only when there are cents — "$40", but
+ * "$38.72" for a fuel receipt. A memory saved before the switch to dollars
+ * keeps the currency it was written in, so an old ₱ amount still reads as ₱.
+ */
+export function money(n: number | undefined, currency: string = CURRENCY): string {
   if (n === undefined) return ''
-  const symbol = currency === 'PHP' ? '₱' : currency === 'USD' ? '$' : ''
-  return `${symbol}${Math.round(n).toLocaleString()}`
+  const cents = Math.round(n * 100) % 100 !== 0
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: cents ? 2 : 0,
+      maximumFractionDigits: cents ? 2 : 0,
+    }).format(n)
+  } catch {
+    return `${n.toLocaleString()} ${currency}`
+  }
 }
 
 export function shortDate(ts: number): string {
