@@ -81,7 +81,9 @@ export function downloadPack(pack: MemoryPack): void {
   link.download = `keepsake-${new Date().toISOString().slice(0, 10)}.memorypack.json`
   link.click()
 
-  URL.revokeObjectURL(url)
+  // Revoking in the same task can cancel the download in Firefox and Safari,
+  // which start reading the blob only after the click handler returns.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export interface ImportReport {
@@ -89,7 +91,10 @@ export interface ImportReport {
   memories: number
   relations: number
   attachments: number
+  /** Already on this device, by id. Expected on a re-import. */
   skipped: number
+  /** Rejected by the collection schema — a damaged or hand-edited pack. */
+  invalid: number
 }
 
 /**
@@ -111,7 +116,9 @@ export async function importPack(db: TalaDB, pack: unknown): Promise<ImportRepor
   }
 
   const { entities, memories, relations, attachments } = collections(db)
-  const report: ImportReport = { entities: 0, memories: 0, relations: 0, attachments: 0, skipped: 0 }
+  const report: ImportReport = {
+    entities: 0, memories: 0, relations: 0, attachments: 0, skipped: 0, invalid: 0,
+  }
 
   // In chunks, because every write is its own durable commit: one insert per
   // row took 4.1 s for the 422 documents of the seeded corpus. `insertMany` is
@@ -128,6 +135,7 @@ export async function importPack(db: TalaDB, pack: unknown): Promise<ImportRepor
     const writer = col as unknown as {
       insert: (doc: never) => Promise<string>
       insertMany: (docs: never[]) => Promise<string[]>
+      findOne: (filter: never) => Promise<unknown>
     }
     const all = (rows ?? []) as Array<Record<string, unknown>>
 
@@ -145,7 +153,12 @@ export async function importPack(db: TalaDB, pack: unknown): Promise<ImportRepor
           await writer.insert(row as never)
           report[key as keyof ImportReport]++
         } catch {
-          report.skipped++
+          // A row that failed is either already here or not a valid document.
+          // Telling them apart matters: "skipped" is the safe re-import case,
+          // "invalid" means the pack lost data the user may think they kept.
+          const exists = typeof row._id === 'string' && (await writer.findOne({ _id: row._id } as never))
+          if (exists) report.skipped++
+          else report.invalid++
         }
       }
     }

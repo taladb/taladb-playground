@@ -8,7 +8,7 @@ There is no account, no server and no sync. The Rust/WASM engine, the documents,
 indexes and the vector graph are all on your device, in OPFS. Close the tab and it is still yours.
 
 Built with **Next.js 16** (App Router, Turbopack) + **React 19** + **Tailwind v4**, on
-[**TalaDB 0.12.0**](https://github.com/taladb/taladb). Package manager and scripts run on **Bun**.
+[**TalaDB 0.13.0**](https://github.com/taladb/taladb). Package manager and scripts run on **Bun 1.4.4**.
 
 The web app runs on a seeded demo corpus. To keep your own memories, the same product is on
 Android as [**Kepta**](https://play.google.com/store/apps/details?id=dev.thinkgrid.kepta) —
@@ -60,7 +60,7 @@ Every answer and every result row carries its attribution:
 | `/recall` | **The flagship.** Classify → structured → BM25 → vector → graph, with the retrieval inspector |
 | `/timeline` | `useAggregate` — a *live* paged pipeline, not a dead snapshot |
 | `/insights` | `$group`/`$sum` over the whole corpus by thing, by event kind, by year |
-| `/settings` | Which vector index is live and why, resumable rebuilds, `listIndexes`, `storageInfo`, `compact`, export/import |
+| `/settings` | Which vector index is live and why; build an HNSW graph to measure recall against exact, then go back; simulate memory pressure on the shared cache budget; `listIndexes`, `storageInfo`, `compact`, export/import, reset the demo data |
 
 ## Local development
 
@@ -114,7 +114,10 @@ module under `lib/` takes a `TalaDB` handle and knows nothing about which bindin
 builds the same indexes, and asserts on real results: that the location walk lands on Shelf B, that
 the returned drill is not listed as lent out, that `hybridSearch` surfaces at least one document
 keyword search never returned, and that the extractor pulls `₱1,200`, `today`, `Trek FX 3` and
-`CycleHouse` out of one sentence. 40 checks, no mocks.
+`CycleHouse` out of one sentence. It also seeds through the same module the browser uses, so
+it checks that the corpus is dated up to today, that re-seeding leaves the visitor's own memories
+alone, and that the Settings graph experiment and memory-pressure controls do what they say.
+60 checks, no mocks.
 
 ## How it fits together
 
@@ -134,6 +137,31 @@ keyword search never returned, and that the extractor pulls `₱1,200`, `today`,
 - **Append-only where it matters.** A loan is never mutated into a return; a `return` memory closes
   it. The history stays honest, and "what have I lent out?" stays a query rather than a status
   column somebody has to remember to update.
+
+## The demo corpus moves with the calendar
+
+The corpus is fiction written on one day, and a demo built on loans, warranties and "this year"
+goes stale from that day on. So the first visit moves every date in it — the date fields and the
+dates written in the text, together — by whole days, so that the newest memory is from this week.
+Seeded ids are derived from the corpus itself, which is what lets a re-seed (a `SEED_VERSION` bump,
+or **Reset demo data** in `/settings`) replace exactly the corpus and leave anything the visitor
+wrote.
+
+## Notes on TalaDB 0.13
+
+Nothing in the app had to change to run on 0.13.0. What it gets for free:
+
+- **Two-sided ranges are a real range scan now.** "Which warranties expire soon?" is
+  `{ $gte: now, $lte: until }` on an indexed date; until 0.13 that collected both open-ended halves
+  and intersected them.
+- **Sorted pages hold only the page.** "Recently remembered" and the unfiltered timeline start with
+  `$sort` + `$limit` on the indexed `occurredAt`. Newest-first still walks the index, but no longer
+  copies all of it to produce six rows.
+- **Unindexed filters decode less.** The backfill's `embedding: { $exists: false }` scan reads only
+  the field it tests and skips the rest of each document — which, on a memory, is a 384-float
+  vector.
+- **Exact cosine search caches each vector's norm**, so the exact index this app uses at its size
+  is the one that got faster.
 
 ## Notes on TalaDB 0.12
 

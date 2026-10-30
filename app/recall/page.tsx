@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTalaDB } from '@taladb/react'
 import { recall, type RecallResult } from '@/lib/retrieval'
 import { useDesktopFocus } from '@/lib/use-desktop-focus'
@@ -49,20 +49,25 @@ export default function RecallPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useDesktopFocus<HTMLInputElement>()
+  // Questions can overlap — tap two example chips in a row — and the slower one
+  // must not land on top of the one the user asked last.
+  const latest = useRef(0)
 
   const run = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
       if (!trimmed) return
 
+      const ticket = ++latest.current
       setBusy(true)
       setError(null)
       try {
-        setResult(await recall(db, trimmed))
+        const next = await recall(db, trimmed)
+        if (ticket === latest.current) setResult(next)
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
+        if (ticket === latest.current) setError(err instanceof Error ? err.message : String(err))
       } finally {
-        setBusy(false)
+        if (ticket === latest.current) setBusy(false)
       }
     },
     [db],
