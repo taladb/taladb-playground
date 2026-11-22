@@ -16,17 +16,17 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@taladb/react": "^0.13.0",
-    "@taladb/web": "^0.13.0",
-    "next": "^16.2.10",
+    "@taladb/react": "0.13.3",
+    "@taladb/web": "0.13.3",
+    "next": "^16.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "taladb": "^0.13.0",
+    "taladb": "0.13.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
-    "@taladb/node": "0.13.0",
+    "@taladb/node": "0.13.3",
     "@types/bun": "^1.4.4",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
