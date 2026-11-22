@@ -27,7 +27,6 @@
     },
   },
   "trustedDependencies": [
-    "onnxruntime-node",
     "protobufjs",
   ],
   "packages": {
